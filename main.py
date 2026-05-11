@@ -1,4 +1,4 @@
-# ==================== main.py (الكود الكامل المعدل) ====================
+# ==================== main.py (النسخة النهائية المعدلة بالكامل) ====================
 
 import socket
 
@@ -807,7 +807,7 @@ def menu_callback(call):
                     last = "ERROR"  
                     try:
                         result = ch(cc)
-                        # تصنيف النتيجة حسب ردود gatet.py المبسطة
+                        # تصنيف النتيجة حسب ردود gatet.py
                         if result == 'CHARGED':
                             last = 'Charged 💰'
                         elif result == 'INSUFFICIENT FUNDS':
@@ -838,6 +838,32 @@ def menu_callback(call):
                             last = 'Processor Declined 🏦'
                         elif result == 'INVALID CARD':
                             last = 'Invalid Card ❌'
+                        elif result == 'NO ACCOUNT':
+                            last = 'No Account ❌'
+                        elif result == 'CARD NOT ACTIVATED':
+                            last = 'Card Not Activated ⚠️'
+                        elif result == 'CANNOT AUTHORIZE (POLICY)':
+                            last = 'Cannot Authorize (Policy) 🚫'
+                        elif result == 'CARD TYPE NOT ACCEPTED':
+                            last = 'Card Type Not Accepted 🚫'
+                        elif result == 'CARD RESTRICTION':
+                            last = 'Card Restriction 🔒'
+                        elif result == 'CLEANTALK FRAUD SUSPECT':
+                            last = 'CleanTalk Fraud Suspect ⚠️'
+                        elif result == 'CLEANTALK SUSPECT':
+                            last = 'CleanTalk Suspect ⚠️'
+                        elif result == 'GATEWAY REJECTED FRAUD':
+                            last = 'Gateway Rejected Fraud 🚫'
+                        elif result == 'RISK THRESHOLD':
+                            last = 'Risk Threshold ⚠️'
+                        elif result == 'PROCESSOR DECLINED - FRAUD SUSPECTED':
+                            last = 'Processor Declined - Fraud Suspected 🚫'
+                        elif result == 'CALL ISSUER - PICK UP CARD':
+                            last = 'Call Issuer - Pick Up Card 📞'
+                        elif result == 'EMAIL DOES NOT EXIST':
+                            last = 'Email Does Not Exist 📧'
+                        elif result == 'PICKUP CARD':
+                            last = 'Pickup Card 🃏'
                         else:
                             last = result if len(result) < 40 else 'Declined ❌'
                     except Exception as e:
@@ -879,8 +905,6 @@ def menu_callback(call):
 [ϟ] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲: <code>{country} - [{country_flag}]</code>
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌥] 𝐓𝐢𝐦𝐞: <code>{"{:.1f}".format(execution_time)}</code> 𝐒𝐞𝐜. || 𝐏𝐫𝐨𝐱𝐲: <code>𝐋𝐢𝐯𝐞</code> ✅
-[⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> 
-
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌤] 𝐃𝐞𝐯 𝐛𝐲: 𝐉𝐨𝐤𝐞𝐫 🃏'''
                     
@@ -899,7 +923,9 @@ def menu_callback(call):
                     else:
                         dd += 1
                     
-                    sleep_time = random.uniform(16, 20)
+                    # ⭐⭐⭐ تأخير عشوائي للكومبو (35-60 ثانية) ⭐⭐⭐
+                    sleep_time = random.uniform(35, 60)
+                    print(f"[*] Waiting {sleep_time:.0f} seconds before next card...")
                     time.sleep(sleep_time)
                     
         except Exception as e:
@@ -1018,7 +1044,7 @@ Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''', parse_mode="HTML")
     execution_time = end_time - start_time
     command_usage[idt]['last_time'] = datetime.now()
     
-    # تصنيف النتيجة حسب ردود gatet.py المبسطة
+    # تصنيف النتيجة حسب ردود gatet.py
     if result == 'CHARGED':
         status_text = "𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅"
     elif result == 'INSUFFICIENT FUNDS':
@@ -1049,10 +1075,34 @@ Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''', parse_mode="HTML")
         status_text = "𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐨𝐫 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 🏦"
     elif result == 'INVALID CARD':
         status_text = "𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐂𝐚𝐫𝐝 ❌"
-    elif result == 'DECLINED':
-        status_text = "𝐃𝐄𝐂𝐋𝐈𝐍𝐄𝐃 ❌"
+    elif result == 'NO ACCOUNT':
+        status_text = "𝐍𝐨 𝐀𝐜𝐜𝐨𝐮𝐧𝐭 ❌"
+    elif result == 'CARD NOT ACTIVATED':
+        status_text = "𝐂𝐚𝐫𝐝 𝐍𝐨𝐭 𝐀𝐜𝐭𝐢𝐯𝐚𝐭𝐞𝐝 ⚠️"
+    elif result == 'CANNOT AUTHORIZE (POLICY)':
+        status_text = "𝐂𝐚𝐧𝐧𝐨𝐭 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞 (𝐏𝐨𝐥𝐢𝐜𝐲) 🚫"
+    elif result == 'CARD TYPE NOT ACCEPTED':
+        status_text = "𝐂𝐚𝐫𝐝 𝐓𝐲𝐩𝐞 𝐍𝐨𝐭 𝐀𝐜𝐜𝐞𝐩𝐭𝐞𝐝 🚫"
+    elif result == 'CARD RESTRICTION':
+        status_text = "𝐂𝐚𝐫𝐝 𝐑𝐞𝐬𝐭𝐫𝐢𝐜𝐭𝐢𝐨𝐧 🔒"
+    elif result == 'CLEANTALK FRAUD SUSPECT':
+        status_text = "𝐂𝐥𝐞𝐚𝐧𝐓𝐚𝐥𝐤 𝐅𝐫𝐚𝐮𝐝 𝐒𝐮𝐬𝐩𝐞𝐜𝐭 ⚠️"
+    elif result == 'CLEANTALK SUSPECT':
+        status_text = "𝐂𝐥𝐞𝐚𝐧𝐓𝐚𝐥𝐤 𝐒𝐮𝐬𝐩𝐞𝐜𝐭 ⚠️"
+    elif result == 'GATEWAY REJECTED FRAUD':
+        status_text = "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐑𝐞𝐣𝐞𝐜𝐭𝐞𝐝 𝐅𝐫𝐚𝐮𝐝 🚫"
+    elif result == 'RISK THRESHOLD':
+        status_text = "𝐑𝐢𝐬𝐤 𝐓𝐡𝐫𝐞𝐬𝐡𝐨𝐥𝐝 ⚠️"
+    elif result == 'PROCESSOR DECLINED - FRAUD SUSPECTED':
+        status_text = "𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐨𝐫 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 - 𝐅𝐫𝐚𝐮𝐝 𝐒𝐮𝐬𝐩𝐞𝐜𝐭𝐞𝐝 🚫"
+    elif result == 'CALL ISSUER - PICK UP CARD':
+        status_text = "𝐂𝐚𝐥𝐥 𝐈𝐬𝐬𝐮𝐞𝐫 - 𝐏𝐢𝐜𝐤 𝐔𝐩 𝐂𝐚𝐫𝐝 📞"
+    elif result == 'EMAIL DOES NOT EXIST':
+        status_text = "𝐄𝐦𝐚𝐢𝐥 𝐃𝐨𝐞𝐬 𝐍𝐨𝐭 𝐄𝐱𝐢𝐬𝐭 📧"
+    elif result == 'PICKUP CARD':
+        status_text = "𝐏𝐢𝐜𝐤𝐮𝐩 𝐂𝐚𝐫𝐝 🃏"
     else:
-        status_text = f"𝐃𝐄𝐂𝐋𝐈𝐍𝐄𝐃 ❌ | {result[:40]}"
+        status_text = f"𝐃𝐄𝐂𝐋𝐈𝐍𝐄𝐃 | {result[:40]}"
     
     base_msg = f'''
 - - - - - - - - - - - - - - - - - - - - - - -
@@ -1065,12 +1115,16 @@ Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''', parse_mode="HTML")
 [ϟ] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲: <code>{country} - [{country_flag}]</code>
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌥] 𝐓𝐢𝐦𝐞: <code>{"{:.1f}".format(execution_time)}</code> 𝐒𝐞𝐜. || 𝐏𝐫𝐨𝐱𝐲: <code>𝐋𝐢𝐯𝐞</code> ✅
-[⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> 
-
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌤] 𝐃𝐞𝐯 𝐛𝐲: 𝐉𝐨𝐤𝐞𝐫 🃏'''
     
     bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=f"<b>{status_text}</b>{base_msg}", parse_mode="HTML")
+    
+    # ⭐⭐⭐ تأخير عشوائي كبير للسينجل (45-120 ثانية) ⭐⭐⭐
+    if random.random() < 0.7:  # 70% من المرات
+        final_delay = random.uniform(45, 120)
+        print(f"[*] Single check - Waiting {final_delay:.0f} seconds before next check...")
+        time.sleep(final_delay)
 
 @bot.message_handler(commands=["code"])
 def create_code(message):
