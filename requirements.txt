@@ -11,3 +11,5 @@ faker
 pycountry
 user_agent
 fake_useragent
+pysocks
+socks
