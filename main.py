@@ -1,5 +1,3 @@
-# ==================== main.py (النسخة النهائية المعدلة بالكامل) ====================
-
 import socket
 
 orig_getaddrinfo = socket.getaddrinfo
@@ -13,7 +11,7 @@ import telebot,time,random
 import random
 import string
 from telebot import types
-from gatet import ch
+from gatet import *
 from reg import reg
 from datetime import datetime, timedelta
 from faker import Faker
@@ -24,13 +22,14 @@ import json
 from multiprocessing import Process
 import threading
 
-# قاموس لتتبع الفحوصات النشطة لكل مستخدم
+# ==================== قاموس الفحوصات النشطة ====================
+# user_id: {"active": True, "stop_requested": False, "gateway": gateway_name}
 active_scans = {}
 
 stopuser = {}
-token = '8563868911:AAE9F06HkShoa_ZDVE3cjCutObSRk-OBxWw'
-bot = telebot.TeleBot(token, parse_mode="HTML")
-admin = 1093032296
+token = '8979178241:AAFiJQlH7hPvFOgm9pUM9MM5DqIh72ykkL4'
+bot=telebot.TeleBot(token,parse_mode="HTML")
+admin= 1093032296
 f = Faker()
 name = f.name()
 street = f.address()
@@ -41,13 +40,14 @@ phone = f.phone_number()
 coun = f.country()
 mail = f.email()
 command_usage = {}
-user_check_counts = {}
-MAX_CHECKS_FREE = 1000
+user_check_counts = {}  # تخزين عدد فحوصات كل مستخدم
+MAX_CHECKS_FREE = 1000  # أقصى عدد فحوصات للمستخدم العادي
 
 def reset_command_usage():
-    for user_id in command_usage:
-        command_usage[user_id] = {'count': 0, 'last_time': None}
+	for user_id in command_usage:
+		command_usage[user_id] = {'count': 0, 'last_time': None}
 
+# دالة لتحديث عدد فحوصات المستخدم
 def update_user_check_count(user_id):
     user_id_str = str(user_id)
     if user_id_str not in user_check_counts:
@@ -55,6 +55,7 @@ def update_user_check_count(user_id):
     user_check_counts[user_id_str] += 1
     return user_check_counts[user_id_str]
 
+# دالة للتحقق من باقي الفحوصات
 def get_remaining_checks(user_id):
     if user_id == admin:
         return "غير محدود"
@@ -63,12 +64,14 @@ def get_remaining_checks(user_id):
     remaining = MAX_CHECKS_FREE - current
     return remaining if remaining > 0 else 0
 
+# دالة لإعادة تعيين عدد فحوصات المستخدم (للمالك فقط)
 def reset_user_checks(user_id):
     user_id_str = str(user_id)
     if user_id_str in user_check_counts:
         user_check_counts[user_id_str] = 0
     return True
 
+# دالة لزيادة عدد فحوصات المستخدم (للمالك فقط)
 def add_user_checks(user_id, amount):
     user_id_str = str(user_id)
     if user_id_str not in user_check_counts:
@@ -76,25 +79,30 @@ def add_user_checks(user_id, amount):
     user_check_counts[user_id_str] += amount
     return user_check_counts[user_id_str]
 
+# دالة لتعيين عدد فحوصات المستخدم (للمالك فقط)
 def set_user_checks(user_id, amount):
     user_id_str = str(user_id)
     user_check_counts[user_id_str] = amount
     return True
 
+# دالة للتحقق من وجود فحص نشط لمستخدم
 def has_active_scan(user_id):
     return user_id in active_scans and active_scans[user_id].get("active", False)
 
+# دالة لإيقاف فحص مستخدم
 def stop_user_scan(user_id):
     if user_id in active_scans:
         active_scans[user_id]["stop_requested"] = True
         return True
     return False
 
+# دالة لإزالة فحص مستخدم بعد الانتهاء
 def remove_active_scan(user_id):
     if user_id in active_scans:
         active_scans[user_id]["active"] = False
         del active_scans[user_id]
 
+# ملفات الحظر والمستخدمين
 BANNED_USERS_FILE = "banned_users.json"
 USERS_LIST_FILE = "users_list.json"
 
@@ -146,6 +154,7 @@ def add_user_to_list(user_id, username, first_name):
             "checks": user_check_counts.get(user_id_str, 0)
         }
         save_users_list(users)
+        # إشعار المالك بمستخدم جديد
         bot.send_message(admin, f"🆕 **مستخدم جديد!**\n👤 {first_name}\n🆔 `{user_id}`\n🔗 @{username if username else 'لا يوجد'}", parse_mode="Markdown")
     return users
 
@@ -174,13 +183,18 @@ def start(message):
     def my_function():
         user_id = message.from_user.id
         username = message.from_user.username or "𝐔𝐬𝐞𝐫"
+        
+        # إضافة المستخدم للقائمة
         add_user_to_list(user_id, username, message.from_user.first_name)
+
         keyboard = types.InlineKeyboardMarkup()
         add_bot_button = types.InlineKeyboardButton(text="𝐀𝐝𝐝 𝐭𝐡𝐞 𝐛𝐨𝐭 𝐭𝐨 𝐲𝐨𝐮𝐫 𝐜𝐨𝐥𝐥𝐞𝐜𝐭𝐢𝐨𝐧", url="https://t.me/Joker73336?startgroup")
         cmds_button = types.InlineKeyboardButton(text="𝐂𝐨𝐦𝐦𝐚𝐧𝐝𝐬", callback_data="menu")
         cmutton = types.InlineKeyboardButton(text="𝐁𝐔𝐘", callback_data="Buy")        
-        keyboard.row(add_bot_button, cmutton)
+        keyboard.row(add_bot_button,cmutton)
         keyboard.row(cmds_button)
+
+        # الفيديو الجديد
         video_url = 'https://t.me/Joker73336/6'
         bot.send_video(
             chat_id=message.chat.id,
@@ -199,11 +213,14 @@ def start(message):
         )
     threading.Thread(target=my_function).start()
 
+# ==================== أوامر المالك ====================
+
 @bot.message_handler(commands=["admin"])
 def show_admin_commands(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     commands_text = """
 👑 **أوامر المالك - 𝐉𝐨𝐤𝐞𝐫 🃏**
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -252,15 +269,20 @@ def user_info(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         user_id = int(message.text.split()[1])
     except:
         bot.reply_to(message, "❌ استخدم: `/userinfo <ايدي المستخدم>`", parse_mode="Markdown")
         return
+    
+    # جلب معلومات المستخدم
     user_id_str = str(user_id)
     is_vip, vip_msg = is_vip_active(user_id)
     checks = user_check_counts.get(user_id_str, 0)
     remaining = get_remaining_checks(user_id)
+    
+    # جلب معلومات المستخدم من تليجرام
     try:
         chat = bot.get_chat(user_id)
         username = chat.username or "لا يوجد"
@@ -268,50 +290,58 @@ def user_info(message):
     except:
         username = "لا يمكن الجلب"
         first_name = "لا يمكن الجلب"
+    
     info_text = f"""
 📊 **معلومات المستخدم**
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 🆔 **الايدي:** `{user_id}`
 👤 **الاسم:** {first_name}
 🔗 **اليوزر:** @{username}
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 💎 **VIP:** {'✅ نشط' if is_vip else '❌ غير نشط'}
 📅 **تفاصيل:** {vip_msg}
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 📊 **الفحوصات:**
 • استخدم: {checks}
 • متبقي: {remaining if not is_vip else 'غير محدود'}
 • الحد الأقصى: {MAX_CHECKS_FREE if not is_vip else 'VIP'}
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 🚫 **محظور:** {'✅ نعم' if is_user_banned(user_id) else '❌ لا'}
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━
 ✨ **𝐉𝐨𝐤𝐞𝐫 🃏**
 """
     bot.reply_to(message, info_text, parse_mode="Markdown")
 
+# أمر عرض المستخدمين للمالك
 @bot.message_handler(commands=["users"])
 def show_users(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     users = get_all_users_list()
     if not users:
         bot.reply_to(message, "📭 لا يوجد مستخدمين حتى الآن")
         return
+    
     msg = "👥 **قائمة المستخدمين**\n━━━━━━━━━━━━━━━━━━\n"
     for uid, data in users.items():
         msg += f"🆔 `{uid}`\n👤 {data.get('first_name', 'Unknown')}\n🔗 @{data.get('username', 'لا يوجد')}\n📊 فحص: {data.get('checks', 0)}/{MAX_CHECKS_FREE}\n━━━━━━━━━━━━━━━━━━\n"
+    
+    # تقسيم الرسائل إذا كانت طويلة
     if len(msg) > 4000:
         for i in range(0, len(msg), 4000):
             bot.send_message(admin, msg[i:i+4000], parse_mode="Markdown")
     else:
         bot.send_message(admin, msg, parse_mode="Markdown")
 
+# أمر حظر مستخدم
 @bot.message_handler(commands=["ban"])
 def ban_user_command(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         user_id = int(message.text.split()[1])
         ban_user_id(user_id)
@@ -323,11 +353,13 @@ def ban_user_command(message):
     except:
         bot.reply_to(message, "❌ استخدم: `/ban <ايدي المستخدم>`", parse_mode="Markdown")
 
+# أمر فك الحظر
 @bot.message_handler(commands=["unban"])
 def unban_user_command(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         user_id = int(message.text.split()[1])
         unban_user_id(user_id)
@@ -339,11 +371,13 @@ def unban_user_command(message):
     except:
         bot.reply_to(message, "❌ استخدم: `/unban <ايدي المستخدم>`", parse_mode="Markdown")
 
+# أمر إعادة تعيين فحوصات مستخدم
 @bot.message_handler(commands=["resetchecks"])
 def reset_checks_command(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         user_id = int(message.text.split()[1])
         reset_user_checks(user_id)
@@ -352,11 +386,13 @@ def reset_checks_command(message):
     except:
         bot.reply_to(message, "❌ استخدم: `/resetchecks <ايدي المستخدم>`", parse_mode="Markdown")
 
+# أمر إضافة فحوصات لمستخدم
 @bot.message_handler(commands=["addchecks"])
 def add_checks_command(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         parts = message.text.split()
         user_id = int(parts[1])
@@ -367,11 +403,13 @@ def add_checks_command(message):
     except:
         bot.reply_to(message, "❌ استخدم: `/addchecks <ايدي المستخدم> <العدد>`", parse_mode="Markdown")
 
+# أمر تعيين فحوصات مستخدم
 @bot.message_handler(commands=["setchecks"])
 def set_checks_command(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     try:
         parts = message.text.split()
         user_id = int(parts[1])
@@ -382,6 +420,7 @@ def set_checks_command(message):
     except:
         bot.reply_to(message, "❌ استخدم: `/setchecks <ايدي المستخدم> <العدد>`", parse_mode="Markdown")
 
+# أمر معرفة عدد فحوصات مستخدم
 @bot.message_handler(commands=["mychecks"])
 def my_checks(message):
     user_id = message.from_user.id
@@ -392,19 +431,24 @@ def my_checks(message):
         remaining = MAX_CHECKS_FREE - current
         bot.reply_to(message, f"📊 **عدد فحوصاتك**\n━━━━━━━━━━━━\n✅ استخدمت: {current}\n📋 متبقي: {remaining}\n🔒 الحد الأقصى: {MAX_CHECKS_FREE}")
 
+# أمر إذاعة للمستخدمين
 @bot.message_handler(commands=["broadcast"])
 def broadcast_message(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ هذا الأمر للمالك فقط!")
         return
+    
     text = message.text.replace("/broadcast", "").strip()
     if not text:
         bot.reply_to(message, "❌ استخدم: `/broadcast <الرسالة>`", parse_mode="Markdown")
         return
+    
     users = get_all_users_list()
     sent = 0
     failed = 0
+    
     bot.reply_to(message, f"🔄 جاري الإذاعة لـ {len(users)} مستخدم...")
+    
     for uid in users.keys():
         try:
             bot.send_message(int(uid), f"📢 **إذاعة من المالك**\n━━━━━━━━━━━━━━━━\n{text}")
@@ -412,6 +456,7 @@ def broadcast_message(message):
             time.sleep(0.2)
         except:
             failed += 1
+    
     bot.send_message(admin, f"✅ **تم الإذاعة!**\n✅ نجح: {sent}\n❌ فشل: {failed}")
 
 @bot.callback_query_handler(func=lambda call: call.data == 'menu')
@@ -420,6 +465,7 @@ def show_menu(call):
     plans = types.InlineKeyboardButton(text='𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬', callback_data='plans')
     tools = types.InlineKeyboardButton(text='𝐓𝐨𝐨𝐥𝐬', callback_data='tool')
     keyboard.row(plans, tools)
+
     bot.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -438,14 +484,16 @@ def show_gateways(call):
     keyboard = types.InlineKeyboardMarkup()
     back = types.InlineKeyboardButton(text='𝐁𝐚𝐜𝐤', callback_data='menu')
     keyboard.add(back)
+
     bot.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
         caption=f"""<b>𝐆𝐚𝐭𝐞𝐰𝐚𝐲𝐬:
 ━━━━━━━━━━━━
-𝐍𝐚𝐦𝐞: 𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐂𝐡𝐚𝐫𝐠𝐞
+𝐍𝐚𝐦𝐞: 𝐒𝐓𝐑𝐈𝐏 𝐀𝐔𝐓𝐇
+𝐍𝐚𝐦𝐞: 𝐏𝐚𝐲𝐏𝐚𝐥 𝐂𝐡𝐚𝐫𝐠𝐞 0.50$
 𝐒𝐭𝐚𝐭𝐮𝐬: ✅
-𝐂𝐨𝐦𝐦𝐚𝐧𝐝: /chk
+𝐂𝐨𝐦𝐦𝐚𝐧𝐝: /pp , /stc5 , /chk
 ━━━━━━━━━━━━</b>""",
         reply_markup=keyboard,
         parse_mode="HTML"
@@ -456,6 +504,7 @@ def show_tools(call):
     keyboard = types.InlineKeyboardMarkup()
     back = types.InlineKeyboardButton(text='𝐁𝐚𝐜𝐤', callback_data='menu')
     keyboard.add(back)
+
     bot.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -486,6 +535,9 @@ def save_users(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
+# ==================== نظام الاشتراك بالنجوم ====================
+
+# إعدادات الاشتراك بالنجوم
 STAR_PRICES = {
     "1hour": 10,
     "3hours": 30,
@@ -502,6 +554,7 @@ def show_subscription_plans(call):
     week1 = InlineKeyboardButton(f"📆 1 أسبوع - {STAR_PRICES['1week']} ⭐", callback_data='sub_1week')
     back = InlineKeyboardButton("🔙 رجوع", callback_data='menu')
     keyboard.add(hour1, hour3, day1, week1, back)
+    
     bot.edit_message_caption(
         chat_id=call.message.chat.id,
         message_id=call.message.message_id,
@@ -514,19 +567,25 @@ def show_subscription_plans(call):
 def handle_subscription(call):
     plan = call.data.split('_')[1]
     user_id = call.from_user.id
+    
     prices_map = {
         '1hour': {'stars': STAR_PRICES['1hour'], 'hours': 1, 'name': 'ساعة واحدة'},
         '3hours': {'stars': STAR_PRICES['3hours'], 'hours': 3, 'name': '3 ساعات'},
         '1day': {'stars': STAR_PRICES['1day'], 'hours': 24, 'name': 'يوم واحد'},
         '1week': {'stars': STAR_PRICES['1week'], 'hours': 168, 'name': 'أسبوع واحد'}
     }
+    
     if plan not in prices_map:
         bot.answer_callback_query(call.id, "❌ حدث خطأ، حاول مرة أخرى")
         return
+    
     plan_info = prices_map[plan]
     title = f"اشتراك VIP - {plan_info['name']}"
     description = f"اشتراك مميز في بوت Joker 🃏\nلمدة {plan_info['name']}\nفحص غير محدود خلال المدة"
+    
+    # إنشاء فاتورة بالنجوم
     prices = [LabeledPrice(label="VIP Subscription", amount=plan_info['stars'])]
+    
     try:
         bot.send_invoice(
             chat_id=user_id,
@@ -551,23 +610,35 @@ def successful_payment_handler(message):
     payload = message.successful_payment.invoice_payload
     user_id = message.from_user.id
     amount = message.successful_payment.total_amount
+    
+    # استخراج بيانات الاشتراك من الـ payload
     parts = payload.split('_')
     if len(parts) >= 4 and parts[0] == 'vip':
         plan_type = parts[1]
         hours = int(parts[3])
+        
+        # حساب وقت انتهاء الاشتراك
         end_time = datetime.now() + timedelta(hours=hours)
+        
+        # حفظ الاشتراك للمستخدم
         with open('data.json', 'r') as f:
             subs = json.load(f)
+        
         user_id_str = str(user_id)
         subs[user_id_str] = {
             "plan": "𝗩𝗜𝗣",
             "timer": end_time.strftime("%Y-%m-%d %H:%M")
         }
+        
         with open('data.json', 'w') as f:
             json.dump(subs, f, indent=4)
+        
+        # إعادة تعيين عدد فحوصات المستخدم (أصبح غير محدود)
         if user_id_str in user_check_counts:
             user_check_counts[user_id_str] = 0
         update_user_in_list(user_id, 0)
+        
+        # إرسال رسالة تأكيد للمستخدم
         bot.send_message(
             user_id,
             f"✅ **تم تفعيل اشتراك VIP بنجاح!**\n"
@@ -578,6 +649,8 @@ def successful_payment_handler(message):
             f"━━━━━━━━━━━━━━━━━━\n"
             f"𝐉𝐨𝐤𝐞𝐫 🃏"
         )
+        
+        # إشعار المالك
         user = message.from_user
         bot.send_message(
             admin,
@@ -596,18 +669,23 @@ def successful_payment_handler(message):
     else:
         bot.send_message(user_id, "❌ حدث خطأ في معالجة الدفع، يرجى التواصل مع المالك")
 
+# دالة للتحقق من صلاحية الاشتراك
 def is_vip_active(user_id):
     if user_id == admin:
         return True, "المالك"
+    
     try:
         with open('data.json', 'r') as f:
             subs = json.load(f)
+        
         user_id_str = str(user_id)
         if user_id_str not in subs:
             return False, "لا يوجد اشتراك"
+        
         timer_str = subs[user_id_str].get("timer")
         if not timer_str:
             return False, "لا يوجد اشتراك"
+        
         expiry = datetime.strptime(timer_str, "%Y-%m-%d %H:%M")
         if expiry > datetime.now():
             remaining = expiry - datetime.now()
@@ -618,10 +696,12 @@ def is_vip_active(user_id):
     except:
         return False, "خطأ في التحقق"
 
+# أمر check status
 @bot.message_handler(commands=["status"])
 def check_status(message):
     user_id = message.from_user.id
     is_vip, msg = is_vip_active(user_id)
+    
     if is_vip:
         bot.reply_to(
             message,
@@ -646,23 +726,34 @@ def check_status(message):
             f"𝐉𝐨𝐤𝐞𝐫 🃏"
         )
 
+# ==================== معالجة الملفات ====================
+
 @bot.message_handler(content_types=["document"])
 def handle_document(message):
     user_id = message.from_user.id
     name = message.from_user.first_name
+    
+    # التحقق من الحظر
     if is_user_banned(user_id):
         bot.reply_to(message, "🚫 **لقد تم حظرك من استخدام هذا البوت.**\nللتواصل مع المالك: @Joker")
         return
+    
+    # ✅ منع رفع ملف أو بدء فحص جديد في وجود فحص نشط
     if has_active_scan(user_id):
-        bot.reply_to(message, "⚠️ **يوجد فحص نشط بالفعل!**\n❌ لا يمكنك رفع ملف جديد حتى ينتهي الفحص الحالي.\n━━━━━━━━━━━━━━━━━━\n🛑 استخدم زر STOP لإيقاف الفحص الحالي")
+        bot.reply_to(message, "⚠️ **يوجد فحص نشط بالفعل!**\n❌ لا يمكنك بدء فحص جديد حتى ينتهي الفحص الحالي.\n━━━━━━━━━━━━━━━━━━\n🛑 استخدم زر STOP لإيقاف الفحص الحالي")
         return
+    
     with open('data.json', 'r') as file:
         json_data = json.load(file)
+    
+    # التحقق من الاشتراك
     is_vip, vip_msg = is_vip_active(user_id)
+    
     try:
         BL = (json_data[str(user_id)]['plan']) if str(user_id) in json_data else '𝗙𝗥𝗘𝗘'
     except:
         BL = '𝗙𝗥𝗘𝗘'
+    
     if BL == '𝗙𝗥𝗘𝗘' and not is_vip:
         with open('data.json', 'r') as json_file:
             existing_data = json.load(json_file)
@@ -675,21 +766,26 @@ def handle_document(message):
         existing_data.update(new_data)
         with open('data.json', 'w') as json_file:
             json.dump(existing_data, json_file, ensure_ascii=False, indent=4)
+        
         keyboard = types.InlineKeyboardMarkup()
         contact_button = types.InlineKeyboardButton(text="𝐃𝐞𝐯", url="https://t.me/Joker")
         keyboard.add(contact_button)
         bot.send_message(chat_id=message.chat.id, text=f'''<b>𝐘𝐨𝐮 𝐜𝐚𝐧'𝐭 𝐮𝐬𝐞 𝐭𝐡𝐞 𝐛𝐨𝐭 𝐛𝐞𝐜𝐚𝐮𝐬𝐞 𝐲𝐨𝐮𝐫 𝐬𝐮𝐛𝐬𝐜𝐫𝐢𝐩𝐭𝐢𝐨𝐧 𝐡𝐚𝐬 𝐞𝐱𝐩𝐢𝐫𝐞𝐝 ❌
 </b>\n🛒 استخدم /buy للاشتراك''', reply_markup=keyboard)
         return
+    
     ee = bot.download_file(bot.get_file(message.document.file_id).file_path)
     with open("combo.txt", "wb") as w:
         w.write(ee)
+    
     with open("combo.txt", "r") as file:
         lines_list = file.readlines()
         line_count = len(lines_list)
         if line_count > 2000000:
             bot.reply_to(message, "❌ 𝐌𝐚𝐱𝐢𝐦𝐮𝐦 2000000 𝐜𝐚𝐫𝐝𝐬 𝐚𝐥𝐥𝐨𝐰𝐞𝐝 𝐩𝐞𝐫 𝐟𝐢𝐥𝐞!")
             return
+    
+    # التحقق من عدد الفحوصات للمستخدم العادي
     if not is_vip and user_id != admin:
         current_checks = user_check_counts.get(str(user_id), 0)
         if current_checks + line_count > MAX_CHECKS_FREE:
@@ -703,6 +799,8 @@ def handle_document(message):
                 f"🛒 استخدم /buy"
             )
             return
+    
+    # التحقق من صلاحية الوقت للاشتراك القديم
     if not is_vip:
         try:
             date_str = json_data[str(user_id)]['timer'].split('.')[0]
@@ -713,6 +811,7 @@ def handle_document(message):
             keyboard.add(ahmed)
             bot.send_message(chat_id=message.chat.id, text=f'''<b>𝐘𝐨𝐮 𝐜𝐚𝐧'𝐭 𝐮𝐬𝐞 𝐭𝐡𝐞 𝐛𝐨𝐭 𝐛𝐞𝐜𝐚𝐮𝐬𝐞 𝐲𝐨𝐮𝐫 𝐬𝐮𝐛𝐬𝐜𝐫𝐢𝐩𝐭𝐢𝐨𝐧 𝐡𝐚𝐬 𝐞𝐱𝐩𝐢𝐫𝐞𝐝 ❌</b>\n🛒 استخدم /buy للاشتراك''', reply_markup=keyboard)
             return
+        
         current_time = datetime.now()
         if current_time > provided_time:
             keyboard = types.InlineKeyboardMarkup()
@@ -724,29 +823,53 @@ def handle_document(message):
                 json_data[str(user_id)]['plan'] = '𝗙𝗥𝗘𝗘'
                 json.dump(json_data, file, indent=2)
             return
+    
+    # تحديث عدد فحوصات المستخدم
     if not is_vip and user_id != admin:
         update_user_check_count(user_id)
         update_user_in_list(user_id, user_check_counts.get(str(user_id), 0))
+    
     keyboard = types.InlineKeyboardMarkup()
-    braintree_btn = types.InlineKeyboardButton(text=f"𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐂𝐡𝐚𝐫𝐠𝐞", callback_data='braintree_charge')
-    keyboard.add(braintree_btn)
+    akk = types.InlineKeyboardButton(text=f"STRIP CHARGE 5$", callback_data='nmi')
+    auth = types.InlineKeyboardButton(text=f"STRIP AUTH", callback_data='strip')
+    pay = types.InlineKeyboardButton(text=f"PAYPAL CHARGE 0.50$", callback_data='ppp')
+    keyboard.add(akk)
+    keyboard.add(auth)
+    keyboard.add(pay)
     bot.reply_to(message, text=f'𝐂𝐡𝐨𝐨𝐬𝐞 𝐓𝐡𝐞 𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐘𝐨𝐮 𝐖𝐚𝐧𝐧𝐚 𝐔𝐬𝐞\n\n👤 {name}\n📊 فحوصات متبقية: {get_remaining_checks(user_id)}', reply_markup=keyboard)
 
-@bot.callback_query_handler(func=lambda call: call.data == 'braintree_charge')
+# ==================== أوامر الفحص ====================
+
+@bot.callback_query_handler(func=lambda call: call.data == 'ppp')
 def menu_callback(call):
     def my_function():
         user_id = call.from_user.id
-        active_scans[user_id] = {"active": True, "stop_requested": False}
+        
+        # ✅ التحقق: مفيش فحص نشط من الأساس
+        if has_active_scan(user_id):
+            bot.answer_callback_query(call.id, "⚠️ يوجد فحص نشط بالفعل!")
+            bot.edit_message_text(
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                text="⚠️ **لا يمكنك بدء فحص جديد!**\n📌 يوجد فحص نشط بالفعل.\n🛑 استخدم زر STOP أولاً."
+            )
+            return
+        
+        # ✅ تسجيل بداية الفحص في القاموس
+        active_scans[user_id] = {"active": True, "stop_requested": False, "gateway": "paypal"}
+        
+        # التحقق من الحظر
         if is_user_banned(user_id):
             bot.edit_message_text("🚫 **لقد تم حظرك!**", chat_id=call.message.chat.id, message_id=call.message.message_id)
             remove_active_scan(user_id)
             return
+        
         user = call.from_user.username
         name = call.from_user.first_name
-        gate = '𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐂𝐡𝐚𝐫𝐠𝐞'
+        gate = '𝐏𝐚𝐲𝐏𝐚𝐥 𝐂𝐡𝐚𝐫𝐠𝐞 0.50$'
         dd = 0
         live = 0
-        ch_count = 0
+        ch = 0
         ccnn = 0
         risk_count = 0
         op = 0 
@@ -765,6 +888,7 @@ def menu_callback(call):
                 total = len(lino)
                 
                 for index, cc in enumerate(lino):
+                    # ✅ التحقق من طلب الإيقاف أو إلغاء الفحص
                     if not active_scans.get(user_id, {}).get("active", False) or active_scans.get(user_id, {}).get("stop_requested", False):
                         bot.edit_message_text(
                             chat_id=call.message.chat.id,
@@ -806,66 +930,11 @@ def menu_callback(call):
                     start_time = time.time()
                     last = "ERROR"  
                     try:
-                        result = ch(cc)
-                        # تصنيف النتيجة حسب ردود gatet.py
-                        if result == 'CHARGED':
-                            last = 'Charged 💰'
-                        elif result == 'INSUFFICIENT FUNDS':
-                            last = 'Insufficient Funds 💸'
-                        elif result == 'CVV MISMATCH':
-                            last = 'CVV Mismatch 🔒'
-                        elif result == 'EXPIRED CARD':
-                            last = 'Expired Card 📅'
-                        elif result == 'SUSPECTED FRAUD':
-                            last = 'Suspected Fraud ⚠️'
-                        elif result == 'DO NOT HONOR':
-                            last = 'Do Not Honor 🚫'
-                        elif result == 'CLOSED CARD':
-                            last = 'Closed Card 🔒'
-                        elif result == 'CALL ISSUER':
-                            last = 'Call Issuer 📞'
-                        elif result == 'PICK UP CARD':
-                            last = 'Pick Up Card 🃏'
-                        elif result == '3D SECURE REQUIRED':
-                            last = '3D Secure Required 🔐'
-                        elif result == 'LIMIT EXCEEDED':
-                            last = 'Limit Exceeded 📊'
-                        elif result == 'LOST/STOLEN CARD':
-                            last = 'Lost/Stolen Card 🏴'
-                        elif result == 'ADDRESS MISMATCH':
-                            last = 'Address Mismatch 📍'
-                        elif result == 'PROCESSOR DECLINED':
-                            last = 'Processor Declined 🏦'
-                        elif result == 'INVALID CARD':
-                            last = 'Invalid Card ❌'
-                        elif result == 'NO ACCOUNT':
-                            last = 'No Account ❌'
-                        elif result == 'CARD NOT ACTIVATED':
-                            last = 'Card Not Activated ⚠️'
-                        elif result == 'CANNOT AUTHORIZE (POLICY)':
-                            last = 'Cannot Authorize (Policy) 🚫'
-                        elif result == 'CARD TYPE NOT ACCEPTED':
-                            last = 'Card Type Not Accepted 🚫'
-                        elif result == 'CARD RESTRICTION':
-                            last = 'Card Restriction 🔒'
-                        elif result == 'CLEANTALK FRAUD SUSPECT':
-                            last = 'CleanTalk Fraud Suspect ⚠️'
-                        elif result == 'CLEANTALK SUSPECT':
-                            last = 'CleanTalk Suspect ⚠️'
-                        elif result == 'GATEWAY REJECTED FRAUD':
-                            last = 'Gateway Rejected Fraud 🚫'
-                        elif result == 'RISK THRESHOLD':
-                            last = 'Risk Threshold ⚠️'
-                        elif result == 'PROCESSOR DECLINED - FRAUD SUSPECTED':
-                            last = 'Processor Declined - Fraud Suspected 🚫'
-                        elif result == 'CALL ISSUER - PICK UP CARD':
-                            last = 'Call Issuer - Pick Up Card 📞'
-                        elif result == 'EMAIL DOES NOT EXIST':
-                            last = 'Email Does Not Exist 📧'
-                        elif result == 'PICKUP CARD':
-                            last = 'Pickup Card 🃏'
-                        else:
-                            last = result if len(result) < 40 else 'Declined ❌'
+                        last = str(pay(cc))
+                        if 'risk' in last:
+                            last = 'declined'
+                        elif 'Duplicate' in last:
+                            last = 'live'
                     except Exception as e:
                         print(f"Error processing card {cc}: {e}")
                         last = "ERROR"
@@ -874,7 +943,7 @@ def menu_callback(call):
                     mes.add(
                         types.InlineKeyboardButton(f"• {cc[:20]}... •", callback_data='u8'),
                         types.InlineKeyboardButton(f"• 𝐒𝐓𝐀𝐓𝐔𝐒 ➜ {last[:35]} •", callback_data='u8'),
-                        types.InlineKeyboardButton(f"• 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅ ➜ [ {ch_count} ] •", callback_data='x'),
+                        types.InlineKeyboardButton(f"• 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅ ➜ [ {ch} ] •", callback_data='x'),
                         types.InlineKeyboardButton(f"• 𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 ✅ ➜ [ {app} ] •", callback_data='x'),
                         types.InlineKeyboardButton(f"• 𝐎𝐓𝐏 ☑️ ➜ [ {op} ] •", callback_data='x'),
                         types.InlineKeyboardButton(f"• 𝐂𝐜𝐧 ☑️ ➜ [ {ccnn} ] •", callback_data='x'),
@@ -905,32 +974,37 @@ def menu_callback(call):
 [ϟ] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲: <code>{country} - [{country_flag}]</code>
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌥] 𝐓𝐢𝐦𝐞: <code>{"{:.1f}".format(execution_time)}</code> 𝐒𝐞𝐜. || 𝐏𝐫𝐨𝐱𝐲: <code>𝐋𝐢𝐯𝐞</code> ✅
+[⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> 
+
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌤] 𝐃𝐞𝐯 𝐛𝐲: 𝐉𝐨𝐤𝐞𝐫 🃏'''
                     
+                    # التعديلات الجديدة للتصنيف الصحيح
                     if 'Charged' in last or 'Charge' in last: 
-                        ch_count += 1
+                        ch += 1
                         msg = f"<b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅</b>\n{base_msg}"
                         bot.send_message(call.from_user.id, msg, parse_mode='HTML')
-                    elif 'Insufficient' in last: 
+                    elif 'Insufficient' in last or 'INSUFFICIENT' in last or 'insufficient' in last: 
                         live += 1
                         msg = f"<b>𝐢𝐧𝐬𝐮𝐟𝐟𝐢𝐜𝐢𝐞𝐧𝐭 𝐅𝐮𝐧𝐝𝐬 ☑️</b>\n{base_msg}"
                         bot.send_message(call.from_user.id, msg, parse_mode='HTML')
-                    elif 'CVV' in last: 
+                    elif 'CVV' in last or 'CCN' in last or 'security code' in last.lower(): 
                         ccnn += 1
                         msgc = f"<b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝(CCN) ☑️</b>\n{base_msg}"
                         bot.send_message(call.from_user.id, msgc, parse_mode='HTML')
+                    elif 'DECLINED_PLEASE_RETRY_LATER' in last: 
+                        op += 1                       
                     else:
                         dd += 1
                     
-                    # ⭐⭐⭐ تأخير عشوائي للكومبو (35-60 ثانية) ⭐⭐⭐
-                    sleep_time = random.uniform(35, 60)
-                    print(f"[*] Waiting {sleep_time:.0f} seconds before next card...")
+                    # تأخير عشوائي بين 16 و 20 ثانية
+                    sleep_time = random.uniform(16, 20)
                     time.sleep(sleep_time)
                     
         except Exception as e:
             print(f"Error in main loop: {e}")
         
+        # ✅ إنهاء الفحص وإزالته من القائمة النشطة
         remove_active_scan(user_id)
         
         bot.edit_message_text(
@@ -941,13 +1015,17 @@ def menu_callback(call):
     my_thread = threading.Thread(target=my_function)
     my_thread.start()
 
+# معالج زر الإيقاف
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stop_scan_'))
 def stop_scan(call):
     user_id = call.from_user.id
+    # استخراج ID المستخدم من الـ callback data
     target_id = int(call.data.split('_')[2])
+    
     if user_id != target_id:
         bot.answer_callback_query(call.id, "❌ هذا الزر ليس مخصص لك!")
         return
+    
     if user_id in active_scans:
         active_scans[user_id]["stop_requested"] = True
         bot.answer_callback_query(call.id, "🛑 جاري إيقاف الفحص...")
@@ -959,8 +1037,10 @@ def stop_scan(call):
     else:
         bot.answer_callback_query(call.id, "❌ لا يوجد فحص نشط للإيقاف")
 
-@bot.message_handler(func=lambda message: message.text.lower().startswith('.chk') or message.text.lower().startswith('/chk'))
-def respond_to_braintree(message):
+# أمر الفحص الفردي
+@bot.message_handler(func=lambda message: message.text.lower().startswith('.pp') or message.text.lower().startswith('/pp'))
+def respond_to_vbv(message):
+    # التحقق من الحظر
     if is_user_banned(message.from_user.id):
         bot.reply_to(message, "🚫 **لقد تم حظرك من استخدام هذا البوت.**\nللتواصل مع المالك: @Joker")
         return
@@ -969,8 +1049,10 @@ def respond_to_braintree(message):
     user = message.from_user.username
     idt = message.from_user.id
     id = message.chat.id
-    gate = '𝐁𝐫𝐚𝐢𝐧𝐭𝐫𝐞𝐞 𝐂𝐡𝐚𝐫𝐠𝐞'
+    gate_number = 0
+    gate='𝐏𝐚𝐲𝐏𝐚𝐥_𝐂𝐡𝐚𝐫𝐠𝐞_0.50$'
 
+    # التحقق من عدد الفحوصات للمستخدم العادي
     is_vip, _ = is_vip_active(idt)
     if not is_vip and idt != admin:
         if not can_user_check(idt, 1):
@@ -986,31 +1068,34 @@ def respond_to_braintree(message):
     if command_usage[idt]['last_time'] is not None:
         time_diff = (current_time - command_usage[idt]['last_time']).seconds
         if time_diff < 30 and idt != admin:
-            bot.reply_to(message, f"<b>Try again after {30-time_diff} seconds.</b>", parse_mode="HTML")
+            bot.reply_to(message, f"<b>Try again after {30-time_diff} seconds.</b>",parse_mode="HTML")
             return
     
     ko = (bot.reply_to(message, "𝐂𝐡𝐞𝐜𝐤𝐢𝐧𝐠 𝐘𝐨𝐮𝐫 𝐂𝐚𝐫𝐝𝐬...⌛").message_id)
     try:
         cc = message.reply_to_message.text
     except:
-        cc = message.text
+        cc=message.text
     
-    cc = str(reg(cc))
+    cc=str(reg(cc))
     if cc == 'None':
         bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text='''<b>🚫 Oops!
 Please ensure you enter the card details in the correct format:
-Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''', parse_mode="HTML")
+Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''',parse_mode="HTML")
         return
     
+    # تحديث عدد فحوصات المستخدم
     if not is_vip and idt != admin:
         update_user_check_count(idt)
         update_user_in_list(idt, user_check_counts.get(str(idt), 0))
     
     start_time = time.time()
     try:
-        result = ch(cc)
+        last = str(pay(cc))
+        if 'result not found' in last:
+            last='Authenticate Frictionless Failed'
     except Exception as e:
-        result = 'DECLINED'
+        last='Error'
     
     try:
         data = requests.get('https://bins.antipublic.cc/bins/'+cc[:6]).json()
@@ -1044,87 +1129,51 @@ Card: XXXXXXXXXXXXXXXX|MM|YYYY|CVV</b>''', parse_mode="HTML")
     execution_time = end_time - start_time
     command_usage[idt]['last_time'] = datetime.now()
     
-    # تصنيف النتيجة حسب ردود gatet.py
-    if result == 'CHARGED':
-        status_text = "𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅"
-    elif result == 'INSUFFICIENT FUNDS':
-        status_text = "𝐢𝐧𝐬𝐮𝐟𝐟𝐢𝐜𝐢𝐞𝐧𝐭 𝐅𝐮𝐧𝐝𝐬 💸"
-    elif result == 'CVV MISMATCH':
-        status_text = "𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝(CCN) ☑️"
-    elif result == 'EXPIRED CARD':
-        status_text = "𝐄𝐱𝐩𝐢𝐫𝐞𝐝 𝐂𝐚𝐫𝐝 📅"
-    elif result == 'SUSPECTED FRAUD':
-        status_text = "𝐒𝐮𝐬𝐩𝐞𝐜𝐭𝐞𝐝 𝐅𝐫𝐚𝐮𝐝 ⚠️"
-    elif result == 'DO NOT HONOR':
-        status_text = "𝐃𝐨 𝐍𝐨𝐭 𝐇𝐨𝐧𝐨𝐫 🚫"
-    elif result == 'CLOSED CARD':
-        status_text = "𝐂𝐥𝐨𝐬𝐞𝐝 𝐂𝐚𝐫𝐝 🔒"
-    elif result == 'CALL ISSUER':
-        status_text = "𝐂𝐚𝐥𝐥 𝐈𝐬𝐬𝐮𝐞𝐫 📞"
-    elif result == 'PICK UP CARD':
-        status_text = "𝐏𝐢𝐜𝐤 𝐔𝐩 𝐂𝐚𝐫𝐝 🃏"
-    elif result == '3D SECURE REQUIRED':
-        status_text = "𝟑𝐃 𝐒𝐞𝐜𝐮𝐫𝐞 𝐑𝐞𝐪𝐮𝐢𝐫𝐞𝐝 🔐"
-    elif result == 'LIMIT EXCEEDED':
-        status_text = "𝐋𝐢𝐦𝐢𝐭 𝐄𝐱𝐜𝐞𝐞𝐝𝐞𝐝 📊"
-    elif result == 'LOST/STOLEN CARD':
-        status_text = "𝐋𝐨𝐬𝐭/𝐒𝐭𝐨𝐥𝐞𝐧 𝐂𝐚𝐫𝐝 🏴"
-    elif result == 'ADDRESS MISMATCH':
-        status_text = "𝐀𝐝𝐝𝐫𝐞𝐬𝐬 𝐌𝐢𝐬𝐦𝐚𝐭𝐜𝐡 📍"
-    elif result == 'PROCESSOR DECLINED':
-        status_text = "𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐨𝐫 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 🏦"
-    elif result == 'INVALID CARD':
-        status_text = "𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐂𝐚𝐫𝐝 ❌"
-    elif result == 'NO ACCOUNT':
-        status_text = "𝐍𝐨 𝐀𝐜𝐜𝐨𝐮𝐧𝐭 ❌"
-    elif result == 'CARD NOT ACTIVATED':
-        status_text = "𝐂𝐚𝐫𝐝 𝐍𝐨𝐭 𝐀𝐜𝐭𝐢𝐯𝐚𝐭𝐞𝐝 ⚠️"
-    elif result == 'CANNOT AUTHORIZE (POLICY)':
-        status_text = "𝐂𝐚𝐧𝐧𝐨𝐭 𝐀𝐮𝐭𝐡𝐨𝐫𝐢𝐳𝐞 (𝐏𝐨𝐥𝐢𝐜𝐲) 🚫"
-    elif result == 'CARD TYPE NOT ACCEPTED':
-        status_text = "𝐂𝐚𝐫𝐝 𝐓𝐲𝐩𝐞 𝐍𝐨𝐭 𝐀𝐜𝐜𝐞𝐩𝐭𝐞𝐝 🚫"
-    elif result == 'CARD RESTRICTION':
-        status_text = "𝐂𝐚𝐫𝐝 𝐑𝐞𝐬𝐭𝐫𝐢𝐜𝐭𝐢𝐨𝐧 🔒"
-    elif result == 'CLEANTALK FRAUD SUSPECT':
-        status_text = "𝐂𝐥𝐞𝐚𝐧𝐓𝐚𝐥𝐤 𝐅𝐫𝐚𝐮𝐝 𝐒𝐮𝐬𝐩𝐞𝐜𝐭 ⚠️"
-    elif result == 'CLEANTALK SUSPECT':
-        status_text = "𝐂𝐥𝐞𝐚𝐧𝐓𝐚𝐥𝐤 𝐒𝐮𝐬𝐩𝐞𝐜𝐭 ⚠️"
-    elif result == 'GATEWAY REJECTED FRAUD':
-        status_text = "𝐆𝐚𝐭𝐞𝐰𝐚𝐲 𝐑𝐞𝐣𝐞𝐜𝐭𝐞𝐝 𝐅𝐫𝐚𝐮𝐝 🚫"
-    elif result == 'RISK THRESHOLD':
-        status_text = "𝐑𝐢𝐬𝐤 𝐓𝐡𝐫𝐞𝐬𝐡𝐨𝐥𝐝 ⚠️"
-    elif result == 'PROCESSOR DECLINED - FRAUD SUSPECTED':
-        status_text = "𝐏𝐫𝐨𝐜𝐞𝐬𝐬𝐨𝐫 𝐃𝐞𝐜𝐥𝐢𝐧𝐞𝐝 - 𝐅𝐫𝐚𝐮𝐝 𝐒𝐮𝐬𝐩𝐞𝐜𝐭𝐞𝐝 🚫"
-    elif result == 'CALL ISSUER - PICK UP CARD':
-        status_text = "𝐂𝐚𝐥𝐥 𝐈𝐬𝐬𝐮𝐞𝐫 - 𝐏𝐢𝐜𝐤 𝐔𝐩 𝐂𝐚𝐫𝐝 📞"
-    elif result == 'EMAIL DOES NOT EXIST':
-        status_text = "𝐄𝐦𝐚𝐢𝐥 𝐃𝐨𝐞𝐬 𝐍𝐨𝐭 𝐄𝐱𝐢𝐬𝐭 📧"
-    elif result == 'PICKUP CARD':
-        status_text = "𝐏𝐢𝐜𝐤𝐮𝐩 𝐂𝐚𝐫𝐝 🃏"
-    else:
-        status_text = f"𝐃𝐄𝐂𝐋𝐈𝐍𝐄𝐃 | {result[:40]}"
-    
     base_msg = f'''
 - - - - - - - - - - - - - - - - - - - - - - -
-[ϟ] 𝐆𝐚𝐭𝐞:  {gate}
 [ϟ] 𝐂𝐚𝐫𝐝:  <code>{cc}</code> 
-[ϟ] 𝐒𝐭𝐚𝐭𝐮𝐬: <b>{status_text}</b>
+[ϟ] 𝐒𝐭𝐚𝐭𝐮𝐬: <b>{last}</b>
 - - - - - - - - - - - - - - - - - - - - - - - -
 [ϟ] 𝐈𝐧𝐟𝐨: <code>{card_type} - {brand}</code>
 [ϟ] 𝐁𝐚𝐧𝐤: <code>{bank}</code>
 [ϟ] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲: <code>{country} - [{country_flag}]</code>
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌥] 𝐓𝐢𝐦𝐞: <code>{"{:.1f}".format(execution_time)}</code> 𝐒𝐞𝐜. || 𝐏𝐫𝐨𝐱𝐲: <code>𝐋𝐢𝐯𝐞</code> ✅
+[⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> 
+
 - - - - - - - - - - - - - - - - - - - - - - - -
 [⌤] 𝐃𝐞𝐯 𝐛𝐲: 𝐉𝐨𝐤𝐞𝐫 🃏'''
     
-    bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=f"<b>{status_text}</b>{base_msg}", parse_mode="HTML")
+    base_msg_declined = f'''
+- - - - - - - - - - - - - - - - - - - - - - -
+[ϟ] 𝐂𝐚𝐫𝐝:  <code>{cc}</code> 
+[ϟ] 𝐒𝐭𝐚𝐭𝐮𝐬: <b>{last}</b>
+- - - - - - - - - - - - - - - - - - - - - - - -
+[ϟ] 𝐈𝐧𝐟𝐨: <code>{card_type} - {brand}</code>
+[ϟ] 𝐁𝐚𝐧𝐤: <code>{bank}</code>
+[ϟ] 𝐂𝐨𝐮𝐧𝐭𝐫𝐲: <code>{country} - [{country_flag}]</code>
+- - - - - - - - - - - - - - - - - - - - - - - -
+[⌥] 𝐓𝐢𝐦𝐞: <code>{"{:.1f}".format(execution_time)}</code> 𝐒𝐞𝐜. || 𝐏𝐫𝐨𝐱𝐲: <code>𝐋𝐢𝐯𝐞</code> ✅
+[⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> 
+
+  - - - - - - - - - - - - -
+[⌤] 𝐃𝐞𝐯 𝐛𝐲: 𝐉𝐨𝐤𝐞𝐫 🃏'''
     
-    # ⭐⭐⭐ تأخير عشوائي كبير للسينجل (45-120 ثانية) ⭐⭐⭐
-    if random.random() < 0.7:  # 70% من المرات
-        final_delay = random.uniform(45, 120)
-        print(f"[*] Single check - Waiting {final_delay:.0f} seconds before next check...")
-        time.sleep(final_delay)
+    # التعديلات الجديدة للتصنيف الصحيح
+    if "Charged" in last or "Charge" in last:
+        msg = f"<b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝 𝐂𝐡𝐚𝐫𝐠𝐞 ✅</b>{base_msg}"
+        bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=msg, parse_mode="HTML")
+    elif "CVV" in last or "CCN" in last or "security code" in last.lower():
+        msg = f"<b>𝐀𝐩𝐩𝐫𝐨𝐯𝐞𝐝(CCN) ☑️</b>{base_msg}"
+        bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=msg, parse_mode="HTML")
+    elif "Insufficient" in last or "INSUFFICIENT" in last or "insufficient" in last:
+        msg = f"<b>𝐢𝐧𝐬𝐮𝐟𝐟𝐢𝐜𝐢𝐞𝐧𝐭 𝐅𝐮𝐧𝐝𝐬 ☑️</b>{base_msg}"
+        bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=msg, parse_mode="HTML")
+    else:
+        msg = f"<b>𝐃𝐄𝐂𝐋𝐈𝐍𝐄𝐃 ❌</b>{base_msg_declined}"
+        bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=msg, parse_mode="HTML")
+
+# ==================== أوامر الكود والاشتراك ====================
 
 @bot.message_handler(commands=["code"])
 def create_code(message):
@@ -1138,11 +1187,13 @@ def create_code(message):
             pas = 'JOKER-'+''.join(random.choices(characters, k=4))+'-'+''.join(random.choices(characters, k=4))+'-'+''.join(random.choices(characters, k=4))
             current_time = datetime.now()
             ig = current_time + timedelta(hours=h)
-            plan = '𝗩𝗜𝗣'
+            plan='𝗩𝗜𝗣'
             parts = str(ig).split(':')
             ig = ':'.join(parts[:2])
+            
             with open('data.json', 'r') as json_file:
                 existing_data = json.load(json_file)
+            
             new_data = {
                 pas: {
                     "plan": plan,
@@ -1152,6 +1203,7 @@ def create_code(message):
             existing_data.update(new_data)
             with open('data.json', 'w') as json_file:
                 json.dump(existing_data, json_file, ensure_ascii=False, indent=4)
+            
             msg = f'''<b>𝐍𝐄𝐖 𝐊𝐄𝐘 𝐂𝐑𝐄𝐀𝐓𝐄𝐃 🌩️
 ━━━━━━━━━━━━━━━━━━
 𝐏𝐋𝐀𝐍 ➜ {plan}
@@ -1169,16 +1221,22 @@ def create_code(message):
 @bot.message_handler(commands=["cimo"])
 def redeem_code(message):
     def my_function():
+        global stop
         try:
             re = message.text.split(' ')[1]
+
             with open('data.json', 'r') as file:
                 json_data = json.load(file)
+
             if re not in json_data:
                 bot.reply_to(message, '<b>𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐨𝐫 𝐚𝐥𝐫𝐞𝐚𝐝𝐲 𝐮𝐬𝐞𝐝 𝐕𝐈𝐏 𝐜𝐨𝐝𝐞.</b>', parse_mode="HTML")
                 return
+
             timer = json_data[re]['time']
             typ = json_data[re]['plan']
+
             user_id_str = str(message.from_user.id)
+
             if user_id_str not in json_data:
                 json_data[user_id_str] = {
                     "timer": timer,
@@ -1187,30 +1245,39 @@ def redeem_code(message):
             else:
                 json_data[user_id_str]['timer'] = timer
                 json_data[user_id_str]['plan'] = typ
+
             del json_data[re]
             with open('data.json', 'w') as file:
                 json.dump(json_data, file, indent=2, ensure_ascii=False)
+
             msg = f'''<b>  𝐕𝐈𝐏 𝐒𝐔𝐁𝐒𝐂𝐑𝐈𝐁𝐄𝐃 ✅
 𝐒𝐔𝐁𝐒𝐂𝐑𝐈𝐏𝐓𝐈𝐎𝐍 𝐄𝐗𝐏𝐈𝐑𝐄𝐒 𝐈𝐍 ➜ {timer}
 𝐓𝐘𝐏 ➜ {typ}</b>'''
             bot.reply_to(message, msg, parse_mode="HTML")
+
         except Exception as e:
             print('𝐄𝐑𝐑𝐎𝐑 : ', e)
             bot.reply_to(message, '<b>𝐈𝐧𝐜𝐨𝐫𝐫𝐞𝐜𝐭 𝐜𝐨𝐝𝐞 𝐨𝐫 𝐢𝐭 𝐡𝐚𝐬 𝐚𝐥𝐫𝐞𝐚𝐝𝐲 𝐛𝐞𝐞𝐧 𝐫𝐞𝐝𝐞𝐞𝐦𝐞𝐝</b>', parse_mode="HTML")
+
     my_thread = threading.Thread(target=my_function)
     my_thread.start()
+
+# ==================== سعر إضافة مستخدم ====================
 
 def add_user(user_id: str, hours: int):
     file_path = "data.json"
     with open(file_path, "r") as f:
         data = json.load(f)
+
     end_time = (datetime.now() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M")
     data[user_id] = {
         "plan": "𝗩𝗜𝗣",
         "timer": end_time
     }
+
     with open(file_path, "w") as f:
         json.dump(data, f, indent=4)
+
     return end_time
 
 @bot.message_handler(commands=["add"])
@@ -1218,25 +1285,32 @@ def handle_add(message):
     if message.from_user.id != admin:
         bot.reply_to(message, "❌ 𝐓𝐡𝐢𝐬 𝐜𝐨𝐦𝐦𝐚𝐧𝐝 𝐢𝐬 𝐨𝐧𝐥𝐲 𝐟𝐨𝐫 𝐭𝐡𝐞 𝐚𝐝𝐦𝐢𝐧.")
         return
+
     try:
         parts = message.text.split()
         user_id = parts[1]
         hours = int(parts[2])
         end_time = add_user(user_id, hours)
+
         bot.reply_to(message, f"✅ 𝐕𝐈𝐏 𝐡𝐚𝐬 𝐛𝐞𝐞𝐧 𝐚𝐜𝐭𝐢𝐯𝐚𝐭𝐞𝐝 𝐟𝐨𝐫 𝐮𝐬𝐞𝐫 `{user_id}` 𝐮𝐧𝐭𝐢𝐥 `{end_time}`", parse_mode="Markdown")
+
         notify_message = f"""
 ﺂﻟﹻٰۧﹷﻘﹻٰۧﹷﻧﹻٰۧﹷﺂص ۦٰ۪۫ﮮٰٰ۪۪۫۫ۦٰ۪۫ۦ 𝗩𝗜𝗣 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗕𝗘𝗗 ✅
 𝑺𝑼𝑩𝑺𝑪𝑹𝑰𝑷𝑻𝑰𝑶𝑵 𝗘𝗫𝗣𝗜𝗥𝗘𝗦 𝗜𝗡 ➜ {end_time}
 𝗧𝗬𝗣 ➜ 𝗩𝗜𝗣
 """
+
         bot.send_message(chat_id=int(user_id), text=notify_message)
+
     except Exception as e:
         bot.reply_to(message, f"❌ 𝐄𝐫𝐫𝐨𝐫: {e}")
 
+# ==================== أوامر الأدوات ====================
+
 @bot.message_handler(func=lambda message: message.text.lower().startswith('.gen') or message.text.lower().startswith('/gen'))
 def generate_cc(message):
-    ko = (bot.reply_to(message, "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗶𝗻𝗴 𝗰𝗮𝗿𝗱𝘀...⌛", parse_mode="HTML").message_id)
-    generate_credit_card(message, bot, ko)
+    ko = (bot.reply_to(message, "𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗶𝗻𝗴 𝗰𝗮𝗿𝗱𝘀...⌛",parse_mode="HTML").message_id)
+    generate_credit_card(message,bot,ko)
 
 def generate_credit_card(message, bot, ko):
     try: 
@@ -1247,6 +1321,7 @@ def generate_credit_card(message, bot, ko):
             if len(card_number) < 6 or card_number[0] not in ['4', '5', '3', '6']:
                 bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text='''𝐁𝐈𝐍 𝐧𝐨𝐭 𝐫𝐞𝐜𝐨𝐠𝐧𝐢𝐳𝐞𝐝. 𝐏𝐥𝐞𝐚𝐬𝐞 𝐞𝐧𝐭𝐞𝐫 𝐚 𝐯𝐚𝐥𝐢𝐝 𝐁𝐈𝐍 ❌''', parse_mode="HTML")
                 return
+
             bin = card_number[:6]
             response_message = ""
             for _ in range(10):
@@ -1277,8 +1352,10 @@ def generate_credit_card(message, bot, ko):
         else:
             bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text='''𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐢𝐧𝐩𝐮𝐭. 𝐏𝐥𝐞𝐚𝐬𝐞 𝐩𝐫𝐨𝐯𝐢𝐝𝐞 𝐚 𝐁𝐈𝐍 (𝐁𝐚𝐧𝐤 𝐈𝐝𝐞𝐧𝐭𝐢𝐟𝐢𝐜𝐚𝐭𝐢𝐨𝐧 𝐍𝐮𝐦𝐛𝐞𝐫) 𝐭𝐡𝐚𝐭 𝐢𝐬 𝐚𝐭 𝐥𝐞𝐚𝐬𝐭 𝟔 𝐝𝐢𝐠𝐢𝐭𝐬 𝐛𝐮𝐭 𝐧𝐨𝐭 𝐞𝐱𝐜𝐞𝐞𝐝𝐢𝐧𝐠 𝟏𝟔 𝐝𝐢𝐠𝐢𝐭𝐬. 
 𝐄𝐱𝐚𝐦𝐩𝐥𝐞: <code>/gen 412236xxxx |xx|2023|xxx</code>''', parse_mode="HTML")
+    
     except IndexError:
         bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text="𝐁𝐈𝐍 𝐧𝐨𝐭 𝐫𝐞𝐜𝐨𝐠𝐧𝐢𝐳𝐞𝐝. 𝐏𝐥𝐞𝐚𝐬𝐞 𝐞𝐧𝐭𝐞𝐫 𝐚 𝐯𝐚𝐥𝐢𝐝 𝐁𝐈𝐍 ❌")
+    
     except Exception as e:
         bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=f"𝐀𝐧 𝐞𝐫𝐫𝐨𝐫 𝐨𝐜𝐜𝐮𝐫𝐫𝐞𝐝: {str(e)}")
 
@@ -1319,8 +1396,10 @@ def bin_lookup(message):
     except:
         bot.reply_to(message, '🚫 Incorrect input. Please provide a 6-digit BIN number.', parse_mode="HTML")
         return
+
     bin = ''.join(matches)[:6]
     ko = bot.reply_to(message, "𝗖𝗵𝗲𝗰𝗸𝗶𝗻𝗴 𝗬𝗼𝘂𝗿 𝗯𝗶𝗻...⌛", parse_mode="HTML").message_id
+
     if len(bin) >= 6:
         try:
             data = requests.get(f'https://bins.antipublic.cc/bins/{bin}').json()
@@ -1329,6 +1408,7 @@ def bin_lookup(message):
             country = data.get('country_name', 'Unknown')
             country_flag = data.get('country_flag', '🏳️')
             bank = data.get('bank', 'Unknown')
+            
             msg = f'''
 [⌥] 𝐁𝐈𝐍 𝐥𝐨𝐨𝐤𝐮𝐩 𝐀𝐩𝐢
 ━━━━━━━━━━━━━━━━━
@@ -1343,6 +1423,7 @@ def bin_lookup(message):
             msg = '𝐈𝐧𝐯𝐚𝐥𝐢𝐝 𝐁𝐈𝐍 ❌'
     else:
         msg = '🚫 Incorrect input. Please provide a 6-digit BIN number.'
+    
     bot.edit_message_text(chat_id=message.chat.id, message_id=ko, text=msg, parse_mode="HTML")
 
 @bot.message_handler(func=lambda message: message.text.lower().startswith('.fake') or message.text.lower().startswith('/fake'))
@@ -1350,9 +1431,9 @@ def fake_address(message):
     def my_function():
         try:
             try:
-                u = message.text.split('fake ')[1]
+                u=message.text.split('fake ')[1]
             except:
-                u = 'US'
+                u='US'
             parsed_data = requests.get(f'https://randomuser.me/api/?nat={u}').json()
             results = parsed_data['results']
             result = results[0]
@@ -1383,11 +1464,13 @@ def fake_address(message):
 [≹] 𝐓𝐢𝐦𝐞: 0.15 seconds
 [⎇] 𝐑𝐞𝐪 𝐁𝐲: <a href="tg://resolve?domain={user}">{name}</a> [Free user]
             """
-            bot.reply_to(message, formatted_address, parse_mode="HTML")
+            bot.reply_to(message, formatted_address,parse_mode="HTML")
         except:
             bot.reply_to(message, "Country code not found or not available.")
     my_thread = threading.Thread(target=my_function)
     my_thread.start()
+
+# ==================== تشغيل البوت ====================
 
 print("𝐉𝐨𝐤𝐞𝐫 𝐁𝐨𝐭 𝐢𝐬 𝐫𝐮𝐧𝐧𝐢𝐧𝐠... 🃏")
 while True:
