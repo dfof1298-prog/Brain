@@ -282,8 +282,8 @@ def brn6(ccx):
 
 
 # ==================== إعدادات الموقع الجديد مع دعم البروكسيات ====================
-SITE_URL = 'https://beingkid.org/donations/sponsorship-opportunities-for-classes-events/'
-URL_AJAX = 'https://beingkid.org/wp-admin/admin-ajax.php'
+SITE_URL = 'https://hasene.org.uk/'
+URL_AJAX = 'https://hasene.org.uk//wp-admin/admin-ajax.php'
 
 def extract_data():
     s, proxy = get_session_with_proxy()
