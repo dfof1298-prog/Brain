@@ -27,7 +27,7 @@ import threading
 active_scans = {}
 
 stopuser = {}
-token = '8772097807:AAFm1ucTQ4CP0X0RWYDUt2mPmmPjTgFY8FQ'
+token = '8772097807:AAE23_1k3G9DdeC5jMlY2XB-o50L8Yga6Mo'
 bot=telebot.TeleBot(token,parse_mode="HTML")
 admin= 1093032296
 f = Faker()
