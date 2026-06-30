@@ -268,8 +268,8 @@ def brn6(ccx):
 
 
 # ==================== إعدادات الموقع الجديد (Oking Foundation) ====================
-SITE_URL = 'https://anehope.org/donations/support-anehope/'
-URL_AJAX = 'https://anehope.org/wp-admin/admin-ajax.php'
+SITE_URL = 'https://beingkid.org/donations/sponsorship-opportunities-for-classes-events/'
+URL_AJAX = 'https://beingkid.org/wp-admin/admin-ajax.php'
 
 def extract_data():
     s = requests.Session()
