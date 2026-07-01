@@ -268,8 +268,8 @@ def brn6(ccx):
 
 
 # ==================== إعدادات الموقع الجديد (Oking Foundation) ====================
-SITE_URL = 'https://www.theflorentine.net/support-the-florentine/'
-URL_AJAX = 'https://www.theflorentine.net/wp-admin/admin-ajax.php'
+SITE_URL = 'https://donbosco2000.org/donations/givewp-donation-form/?lang=en'
+URL_AJAX = 'https://donbosco2000.org/wp-admin/admin-ajax.php'
 
 def extract_data():
     s = requests.Session()
